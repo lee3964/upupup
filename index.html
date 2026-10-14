@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAPERBOTS · 模拟交易大厅</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#070b10; --panel:#0c131c; --panel2:#101a26; --line:#1b2a3a; --text:#c9d6e3; --dim:#6b7f94;
+  --green:#39ff88; --red:#ff4d6a; --amber:#ffcc4d; --cyan:#4dd9ff; --purple:#b77dff; --orange:#ff9d3d;
+  --mono:"JetBrains Mono","Noto Sans Mono CJK SC","Noto Sans Mono","DejaVu Sans Mono","PingFang SC","Microsoft YaHei",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px}
+body{background:radial-gradient(1200px 600px at 50% -10%,#0f2233 0%,var(--bg) 60%)}
+#app{display:grid;grid-template-rows:34px 78px minmax(0,1fr) 104px;gap:10px;height:100vh;min-height:760px;padding:10px 12px}
+.panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:6px;position:relative;overflow:hidden}
+.ptitle{font-size:12px;color:var(--dim);letter-spacing:1px;padding:7px 10px 5px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.ptitle b{color:var(--text);font-weight:600}
+/* header */
+#hdr{display:flex;align-items:center;gap:18px;padding:0 12px;white-space:nowrap}
+#logo{font-weight:800;letter-spacing:2px;color:var(--green);text-shadow:0 0 8px rgba(57,255,136,.6)}
+#logo span{color:var(--text);font-weight:600;letter-spacing:1px;margin-left:6px}
+.hitem{color:var(--dim)} .hitem b{color:var(--text);margin-left:4px}
+.badge{border:1px solid var(--amber);color:var(--amber);padding:1px 6px;border-radius:3px;font-size:11px}
+#live{margin-left:auto;display:flex;gap:14px;align-items:center}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-right:5px;animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.35}}
+/* kpis */
+#kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.kpi{padding:10px 14px}
+.kpi .k{font-size:12px;color:var(--dim)}
+.kpi .v{font-size:26px;font-weight:700;margin-top:4px;letter-spacing:.5px}
+.kpi .s{font-size:11px;color:var(--dim);position:absolute;right:12px;bottom:9px}
+.up{color:var(--green)} .down{color:var(--red)} .neutral{color:var(--text)}
+.kpi::after{content:"";position:absolute;left:0;top:0;width:3px;height:100%;background:var(--accent,var(--cyan))}
+/* main */
+#main{display:grid;grid-template-columns:340px minmax(0,1fr) 460px;gap:10px;min-height:0}
+#left,#right{display:grid;gap:10px;min-height:0}
+#left{grid-template-rows:230px minmax(0,1fr)}
+#right{grid-template-rows:minmax(0,0.7fr) minmax(0,1.65fr)}
+#eqsvg{width:100%;height:calc(100% - 30px);display:block}
+#log{overflow:hidden;height:calc(100% - 30px);padding:4px 0}
+.ev{display:grid;grid-template-columns:56px 84px 1fr;gap:6px;padding:3px 10px;font-size:11.5px;line-height:1.35;border-bottom:1px dashed rgba(27,42,58,.6)}
+.ev .t{color:var(--dim)} .ev .b{font-weight:700} .ev .m{color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-all}
+.ev.err .m{color:var(--red)}
+.ev.new{animation:flash 1.2s}
+@keyframes flash{from{background:rgba(57,255,136,.18)}to{background:transparent}}
+/* floor */
+#floorwrap{display:flex;flex-direction:column;min-height:0}
+#floor{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#05080c}
+#stage{position:relative;aspect-ratio:320/302;height:100%;max-width:100%}
+#room{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+.ov{position:absolute;pointer-events:none}
+.bubble{background:#f4f7fb;color:#0b1520;border:2px solid #0b1520;border-radius:4px;padding:3px 6px 1px;font-size:11px;line-height:1.3;max-width:230px;
+  transform:translate(-50%,-100%);max-height:calc(2.6em + 6px);box-shadow:3px 3px 0 rgba(0,0,0,.45);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all;transition:opacity .4s}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-7px;margin-left:-5px;border:5px solid transparent;border-top-color:#0b1520;border-bottom:0}
+.bubble.sleep{background:#28323d;color:#9fb0c0;border-color:#465566}
+.dlabel{transform:translateX(-50%);font-size:11.5px;white-space:nowrap;padding:1px 6px;border-radius:3px;background:rgba(5,8,12,.75);border:1px solid var(--line)}
+.dlabel i{font-style:normal;display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:1px}
+.dlabel.sel{border-color:var(--amber);box-shadow:0 0 8px rgba(255,204,77,.6)}
+#scrlabel{font-size:12px;color:var(--green);text-shadow:0 0 6px rgba(57,255,136,.5);white-space:nowrap}
+#scrlabel .sym{color:#fff;font-weight:700} #scrlabel .w{color:var(--dim)}
+#clock{font-size:11px;color:var(--cyan);text-shadow:0 0 5px var(--cyan)}
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{color:var(--dim);font-weight:500;text-align:right;padding:4px 6px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel2)}
+td{padding:3px 6px;text-align:right;border-bottom:1px solid rgba(27,42,58,.5);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+.tbody{overflow:hidden;height:calc(100% - 30px)} #pos.tbody,#pos{overflow-y:auto}
+/* Polymarket paper/live compare: larger readable block */
+#pos{font-size:12.5px;padding-bottom:6px}
+#pos .sect{font-size:12.5px;padding:8px 12px 4px;letter-spacing:.3px}
+#pos table{font-size:12.5px}
+#pos th{padding:6px 8px}
+#pos td{padding:5px 8px}
+#pos .empty{font-size:13px;line-height:1.55;padding:6px 12px 8px}
+.rbar{position:relative;width:84px;height:9px;background:#0a1018;border:1px solid #1d2b3b;display:inline-block;vertical-align:middle}
+.rbar .band{position:absolute;top:0;height:100%;background:rgba(57,255,136,.18);border-left:1px solid rgba(57,255,136,.6);border-right:1px solid rgba(57,255,136,.6)}
+.rbar .fill{position:absolute;left:0;top:1px;height:5px}
+.sbadge{font-size:10px;padding:0 3px;border-radius:2px;border:1px solid;cursor:help} .sbadge.ok{color:var(--green);border-color:rgba(57,255,136,.5)} .sbadge.bad{color:var(--red,#ff4d6a);border-color:#ff4d6a} .sbadge.na{color:var(--dim);border-color:var(--dim)}
+.tag{font-size:10.5px;padding:0 4px;border-radius:2px;border:1px solid}
+.chain{font-size:9.5px;padding:0 3px;border-radius:2px;margin-left:2px;color:#0b1220;font-weight:700;cursor:help}
+.nofomo{font-size:9.5px;padding:0 3px;border-radius:2px;margin-left:2px;color:#ffb347;border:1px dashed #ffb347;cursor:help}
+.tag.in{color:var(--green);border-color:var(--green)} .tag.wide{color:var(--orange);border-color:var(--orange)} .tag.narrow{color:var(--cyan);border-color:var(--cyan)} .tag.na{color:var(--dim);border-color:var(--dim)}
+.sect{color:var(--dim);font-size:11px;padding:6px 10px 2px}
+.empty{color:var(--dim);padding:8px 10px;font-size:12px}
+/* bot cards */
+#cards{display:grid;grid-template-columns:repeat(10,1fr);gap:8px}
+.card{padding:8px 10px 8px 62px;cursor:pointer;transition:border-color .2s, transform .2s}
+.card:hover{border-color:#2d4660}
+.card.sel{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset, 0 0 14px rgba(255,204,77,.25)}
+.card canvas{position:absolute;left:8px;top:14px;width:46px;height:46px;image-rendering:pixelated}
+.card .n{font-weight:700;font-size:13px} .card .n small{color:var(--dim);font-weight:400;margin-left:4px;font-size:11px}
+.card .st{font-size:10.5px;margin-top:3px}
+.card .la{font-size:11px;color:var(--dim);margin-top:4px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all}
+.pill{padding:0 5px;border-radius:2px;font-size:10.5px;border:1px solid}
+.pill.working{color:var(--green);border-color:var(--green)} .pill.idle{color:var(--cyan);border-color:var(--cyan)}
+.pill.sleeping{color:var(--dim);border-color:var(--dim)} .pill.down{color:var(--red);border-color:var(--red)}
+#filterhint{color:var(--amber);font-size:11px}
+.ptitle b{white-space:nowrap} #floorwrap .ptitle span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:12px}
+/* narrower screens: give the trading floor (7 desks) more room */
+@media (max-width:1500px){ #main{grid-template-columns:280px minmax(0,1fr) 420px} .rbar{width:60px} #cands th,#cands td{padding:3px 4px} }
+@media (max-width:1200px){
+  #main{grid-template-columns:230px minmax(0,1fr) 360px}
+  #hdr{gap:12px} #hdr .hitem:nth-of-type(n+5){display:none}
+  .kpi .v{font-size:21px} .kpi{padding:8px 10px} .kpi .s{display:none}
+  .rbar{width:56px} th,td{padding:3px 4px}
+  .ev{grid-template-columns:54px 66px 1fr;gap:4px;padding:3px 6px}
+  #cands th:nth-child(2),#cands td:nth-child(2){display:none}
+  #cards{gap:6px} .card{padding:6px 6px 6px 36px} .card canvas{left:4px;top:12px;width:28px;height:28px} .card .n small{display:none}
+  #floorwrap .ptitle span{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr" class="panel">
+    <div id="logo">▚ PAPERBOTS<span>模拟交易大厅</span></div>
+    <span class="badge">纯模拟 · 无真钱</span>
+    <span class="badge" id="h-strat" style="border-color:var(--cyan);color:var(--cyan)">策略 -</span>
+    <div class="hitem">运行<b id="h-run">-</b></div>
+    <div class="hitem">候选<b id="h-cands">-</b></div>
+    <div class="hitem">信号<b id="h-sig">-</b></div>
+    <div class="hitem">否决<b id="h-veto">-</b></div>
+    <div class="hitem">持仓<b id="h-pos">-</b></div>
+    <div class="hitem">侧投注<b id="h-bets">-</b></div>
+    <div class="hitem">做市<b id="h-pm">-</b></div>
+    <div id="live"><span id="h-mode"><span class="dot"></span>实时 · 每 5 秒刷新</span><span class="hitem">SGT<b id="h-clock">--:--:--</b></span></div>
+  </div>
+
+  <div id="kpis">
+    <div class="panel kpi" style="--accent:var(--cyan)"><div class="k">当前权益</div><div class="v" id="k-eq">-</div><div class="s" id="k-eq-s"></div></div>
+    <div class="panel kpi" style="--accent:var(--green)" id="k-pnl-card"><div class="k">总盈亏</div><div class="v" id="k-pnl">-</div><div class="s" id="k-pnl-s"></div></div>
+    <div class="panel kpi" style="--accent:var(--purple)"><div class="k">持仓市值</div><div class="v" id="k-pos">-</div><div class="s" id="k-pos-s"></div></div>
+    <div class="panel kpi" style="--accent:var(--amber)"><div class="k">胜率</div><div class="v" id="k-win">-</div><div class="s" id="k-win-s"></div></div>
+    <div class="panel kpi" style="--accent:var(--orange)"><div class="k">已平仓笔数</div><div class="v" id="k-closed">-</div><div class="s" id="k-closed-s"></div></div>
+  </div>
+
+  <div id="main">
+    <div id="left">
+      <div class="panel"><div class="ptitle"><b>余额曲线</b><span id="eq-range"></span></div><svg id="eqsvg"></svg></div>
+      <div class="panel"><div class="ptitle"><b>活动日志</b><span id="filterhint"></span></div><div id="log"></div></div>
+    </div>
+    <div id="floorwrap" class="panel">
+      <div class="ptitle"><b>交易大厅</b><span>9 个 Bot + 看门狗 · 墙幕：最受关注的币 · 气泡 = Bot 最新日志/心跳 · 灰色打盹 = 心跳超时</span></div>
+      <div id="floor"><div id="stage"><canvas id="room" width="320" height="302"></canvas><div id="ovs"></div></div></div>
+    </div>
+    <div id="right">
+      <div class="panel"><div class="ptitle"><b>候选币 · 1 小时波动区间</b><span id="band-note"></span></div><div class="tbody" id="cands"></div></div>
+      <div class="panel"><div class="ptitle"><b>策略对比（各版本）· 持仓 & 侧投注</b><span id="cash-note"></span></div><div class="tbody" id="pos"></div></div>
+    </div>
+  </div>
+
+  <div id="cards"></div>
+</div>
+
+<script id="embedded-state">/*__STATE__*/</script>
+<script src="config.js"></script>
+<script>
+"use strict";
+const TZ = "Asia/Singapore";
+const BOTC = {scanner:"#4dd9ff", signal:"#39ff88", guard:"#ff4d6a", sizer:"#ffcc4d", executor:"#ff9d3d", sidebet:"#b77dff", sniper:"#ff6fb5", pm_maker:"#2ee6c5", pm_late:"#ffd34d", supervisor:"#d7e2ee"};
+const KINDZH = {start:"启动", stop:"停止", signal:"信号", veto:"否决", approve:"批准", size:"下单", fill:"成交", close:"平仓", bet:"下注",
+  settle:"结算", error:"错误", cancel:"取消", reject:"拒绝", watchdog:"看门狗", scan:"扫描", live:"实时", skip_rr:"跳过", strategy:"策略", exclude:"排除",
+  stop_pending:"待确认止损", stop_reset:"止损复位"};
+const STZH = {working:"工作中", idle:"待命", sleeping:"心跳超时", down:"进程停止"};
+let S = null, selected = null, frame = 0, lastEventTs = 0;
+const $ = id => document.getElementById(id);
+const fmt$ = (v, d=2) => (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+const fmtPx = v => v == null ? "-" : (v >= 1 ? v.toFixed(4) : v.toPrecision(4));
+const fmtM = v => v >= 1e9 ? (v/1e9).toFixed(2)+"B" : v >= 1e6 ? (v/1e6).toFixed(1)+"M" : (v/1e3).toFixed(0)+"K";
+const tsg = (ts, sec=true) => new Date(ts*1000).toLocaleTimeString("zh-CN", {timeZone:TZ, hour12:false, hour:"2-digit", minute:"2-digit", second: sec ? "2-digit" : undefined});
+const ago = s => s == null ? "-" : s < 60 ? Math.round(s)+"秒前" : s < 3600 ? Math.round(s/60)+"分钟前" : (s/3600).toFixed(1)+"小时前";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const dur = s => { s = Math.max(0, s|0); const d = s/86400|0, h = (s%86400)/3600|0, m = (s%3600)/60|0; return (d ? d+"天" : "") + (d||h ? h+"小时" : "") + m+"分"; };
+
+/* ------------------------------------------------------------------ pixel art */
+const W = 320, H = 302;
+const cv = $("room"), cx = cv.getContext("2d");
+function px(x, y, w, h, c){ cx.fillStyle = c; cx.fillRect(x|0, y|0, w, h); }
+function drawRows(ctx, rows, pal, x, y, s=1, flip=false){
+  for (let r = 0; r < rows.length; r++) for (let c = 0; c < rows[r].length; c++){
+    const k = rows[r][flip ? rows[r].length-1-c : c]; if (k === "." || !(k in pal)) continue;
+    ctx.fillStyle = pal[k]; ctx.fillRect(x + c*s, y + r*s, s, s);
+  }
+}
+const HEAD = ["...hhhhhh...","..hhhhhhhh..","..hssssssh..","..sesssses..","..ssssssss..","...ssmmss...","....ssss...."];
+const TORSO = ["..cccccccc..",".cccccccccc.",".cccccccccc.",".cccccccccc."];
+// accessories: [rows, dx, dy] drawn on top of head (dy relative to head top, in sprite px)
+const ACC = {
+  scanner: {rows:["..GGGGGGGG..","..GggGGggG.."], dy:2},                    // cyan goggles
+  signal:  {rows:["..KKKKKKKK..",".K........K.",".K........K.",".K........K.",".K.......KK.","..........L."], dy:-1}, // headset + mic
+  guard:   {rows:["..RRRRRRRR..",".RRRRRRRRRR.",".RrrrrrrrrR."], dy:-1},     // helmet w/ visor stripe
+  sizer:   {rows:["..WWW..WWW..","..W.WWWW.W..","..WWW..WWW.."], dy:2},     // round glasses
+  executor:{rows:["..OOOOOOOO..",".OOOOOOOOOOoo"], dy:-1},                   // cap with brim
+  sidebet: {rows:["...PPPPPP...","...PPPPPP...","...PPPPPP...","...YYYYYY...",".PPPPPPPPPP."], dy:-4}, // top hat
+  sniper:  {rows:["...BBBBBB...","..BBBBBBBB..","..bbbbbbbb..","BBBBBBBBBBBB"], dy:-3},  // detective fedora with pink band
+  pm_maker:{rows:["..VVVVVVVV..",".VVVVVVVVVV.","VvvvvvvvvvvV"], dy:0},   // translucent green dealer's visor (pit trader)
+  pm_late: {rows:["..AAAAAAAA..",".AAAAAAAAAA.","AaaaaaaaaaaA"], dy:-1},   // gold racing cap: the "last-minute sprinter"
+};
+const CHEST = { pm_late:[[5,7,"W"],[6,7,"W"],[4,8,"W"],[7,8,"W"],[5,9,"W"],[6,9,"W"]], pm_maker:[[2,7,"J"],[9,7,"J"],[5,7,"T"],[6,7,"T"],[5,8,"T"],[6,8,"T"],[5,9,"T"],[3,9,"Q"],[8,9,"Q"]], sniper:[[2,7,"k"],[9,7,"k"],[3,8,"k"],[8,8,"k"],[5,9,"b"],[6,9,"b"]], guard:[[5,8,"Y"],[6,8,"Y"]], sizer:[[5,7,"T"],[6,7,"T"],[5,8,"T"],[6,8,"T"],[5,9,"T"]], scanner:[[3,8,"g"]], signal:[[8,8,"L"]] };
+const PAL = {
+  scanner: {h:"#1b1b22", s:"#f1c27d", e:"#111", m:"#a0522d", c:"#1f6f8b", G:"#1d2630", g:"#4dd9ff"},
+  signal:  {h:"#6b3e26", s:"#e0ac69", e:"#111", m:"#8b4513", c:"#1d8a4c", K:"#2a2f36", L:"#39ff88"},
+  guard:   {h:"#333",    s:"#c68642", e:"#111", m:"#6b2b14", c:"#30343f", R:"#d93a50", r:"#ffd1d8", Y:"#ffcc4d"},
+  sizer:   {h:"#cfd3d6", s:"#f5d0a9", e:"#111", m:"#b5651d", c:"#b8922a", W:"#e9eef2", T:"#7a1f2b"},
+  executor:{h:"#111",    s:"#8d5524", e:"#000", m:"#4a2511", c:"#cf5f22", O:"#ff9d3d", o:"#a85516"},
+  sidebet: {h:"#9c4a4a", s:"#f1c27d", e:"#111", m:"#a0522d", c:"#5b3a8c", P:"#2b1d40", Y:"#b77dff"},
+  sniper:  {h:"#3b2a1a", s:"#d9a066", e:"#111", m:"#8b4513", c:"#b5835a", B:"#4a3626", b:"#ff6fb5", k:"#8a6142"},  // tan trench coat, brown fedora
+  pm_late: {h:"#5a3a1a", s:"#f0c8a0", e:"#111", m:"#9a4f2a", c:"#3a2f6b", A:"#ffd34d", a:"#ff9d3d", W:"#f4f7fb"},  // indigo jacket, stopwatch on chest
+  pm_maker:{h:"#2a2a2a", s:"#eac096", e:"#111", m:"#9a4f2a", c:"#1f5f5a", V:"#2ee6c5", v:"#a9fff0", J:"#ffcc4d", T:"#c9d6e3", Q:"#0f3b38"},  // teal pit jacket, gold piping
+};
+function grey(p){ const o = {}; for (const k in p){ const c = p[k]; const n = parseInt(c.slice(1),16);
+  let r=(n>>16)&255, g=(n>>8)&255, b=n&255; let v = (0.3*r+0.59*g+0.11*b)*0.55 + 20 | 0; o[k] = `rgb(${v},${v+3},${v+8})`; } return o; }
+// draw a seated character; returns head top y (canvas px). scale s
+function drawChar(ctx, key, x, y, s, st, f){
+  let pal = PAL[key]; if (st === "sleeping" || st === "down") pal = grey(pal);
+  const bob = st === "idle" ? ((f >> 3) % 2) : 0;
+  const nod = (st === "sleeping" || st === "down") ? 1 : 0;
+  drawRows(ctx, TORSO, pal, x, y + 7*s, s);
+  const hy = y + (bob + nod)*s;
+  let head = HEAD;
+  if (st === "sleeping" || st === "down") head = HEAD.map((r,i)=> i===3 ? r.replace(/e/g,"s") : r).map((r,i)=> i===4 ? "..seesssees.."[0] && "..sEEssEEs..".replace(/E/g,"e") : r);
+  if (st === "working" && ((f >> 2) % 6 === 0)) head = HEAD.map((r,i)=> i===3 ? r.replace(/e/g,"s") : r); // blink
+  drawRows(ctx, head, pal, x, hy, s);
+  const a = ACC[key]; if (a) drawRows(ctx, a.rows, pal, x, hy + a.dy*s, s);
+  (CHEST[key]||[]).forEach(([cx_,cy_,k]) => { ctx.fillStyle = pal[k]; ctx.fillRect(x+cx_*s, y+cy_*s, s, s); });
+  return hy + ((a && a.dy < 0) ? a.dy*s : 0);
+}
+const DOG = ["..........kk....","..........kDDk..","t.........DDeDD.",".t........DDDDDn","..t.......rrrD..","..DDDDDDDDDDD...","..DDDDDDDDDDD...","..DDDDDDDDDD....","..D.D.....D.D...","..k.k.....k.k..."];
+const DOG2 = DOG.slice(0,8).concat(["...D.D...D.D....","...k.k...k.k...."]);
+const DOGSLEEP = ["................","................","................","..........kk....","t.........kDDk..",".tDDDDDDDDDssDDn","..DDDDDDDDDDDDD.","..DDDDDDDDDDDD..","..kk.......kk...","................"];
+const DOGPAL = {k:"#5a3b22", D:"#c48a4a", e:"#111", n:"#111", t:"#c48a4a", r:"#e2324a", s:"#111"};
+
+const DESKS = [ // key, x center, desk top y  (4 + 4; 防狙击 sits next to the scanner it feeds, 做市 next to the other Polymarket bot)
+  ["scanner", 40, 134], ["sniper", 120, 134], ["signal", 200, 134], ["guard", 280, 134],
+  ["sizer",   40, 232], ["executor",120, 232], ["sidebet", 200, 232], ["pm_late", 280, 232]];   // 做市 v1 is closed (quoting off) -> its desk now hosts 尾盘
+const DESK_GAP = 80;   // canvas px between neighbouring desks (bubbles/labels are sized to this)
+let dog = {x: 40, dir: 1};
+
+function drawRoom(){
+  frame++;
+  const f = frame;
+  // wall
+  px(0,0,W,92,"#0d1622"); for (let x = 0; x < W; x += 16) px(x,0,1,92,"#111d2b");
+  px(0,88,W,4,"#1b2b3d"); px(0,92,W,1,"#2e4560");
+  // floor tiles
+  for (let y = 93; y < H; y += 12) for (let x = 0; x < W; x += 16){ px(x,y,16,12, ((x/16 + (y-93)/12) % 2) ? "#0b1119" : "#0e151f"); }
+  // window (left)
+  px(6,10,44,52,"#2a3b4f"); px(8,12,40,48,"#081422");
+  for (let i = 0; i < 9; i++){ const sx = 10 + (i*17)%36, sy = 14 + (i*11)%20; px(sx, sy, 1, 1, (f>>3)%9===i ? "#fff" : "#7d8fa6"); }
+  px(38,16,5,5,"#e9e4c8"); px(39,15,3,1,"#e9e4c8");
+  [[8,44,8,16],[17,38,7,22],[25,48,9,12],[35,40,6,20],[41,46,7,14]].forEach(([x,y,w,h],i)=>{ px(x,y,w,h,"#132235");
+    for (let yy = y+2; yy < y+h-1; yy += 3) for (let xx = x+1; xx < x+w-1; xx += 2) if (((xx*7+yy*3+i+(f>>5))%5)===0) px(xx,yy,1,1,"#ffcc4d"); });
+  px(27,10,2,52,"#2a3b4f");
+  // server rack (right)
+  px(274,8,40,80,"#1a2533"); px(276,10,36,76,"#0a1018");
+  for (let r = 0; r < 7; r++){ px(278,12+r*10,32,8,"#141e2a"); for (let l = 0; l < 4; l++){
+      const on = ((f >> 2) + r*3 + l*5) % 7 < 4; px(281+l*4, 15+r*10, 2, 2, on ? (l===3 ? "#ff4d6a" : "#39ff88") : "#1f3326"); }
+    px(300,15+r*10,8,2,"#22364a"); }
+  // big wall screen
+  px(60,4,204,82,"#22344a"); px(62,6,200,78,"#03070b");
+  for (let gy = 26; gy < 84; gy += 14) for (let gx = 64; gx < 262; gx += 4) px(gx,gy,1,1,"#0c1a24");
+  drawScreenChart(64, 24, 196, 58);
+  // scanline shimmer
+  const sl = 6 + (f*2) % 78; px(62, sl, 200, 1, "rgba(77,217,255,0.06)");
+  // desks + characters
+  DESKS.forEach(([key, x, y]) => drawDesk(key, x, y, f));
+  // watchdog
+  const sup = botOf("supervisor"); const sst = sup ? sup.status : "down";
+  if (sst === "down" || sst === "sleeping"){ drawRows(cx, DOGSLEEP, grey(DOGPAL), 8, 262, 2);
+      if ((f>>3)%3===0) zzz(36, 258, f); }
+  else {
+    dog.x += dog.dir * 0.8; if (dog.x > W - 40) dog.dir = -1; if (dog.x < 6) dog.dir = 1;
+    drawRows(cx, ((f >> 2) % 2) ? DOG : DOG2, DOGPAL, dog.x|0, 262, 2, dog.dir < 0);
+    if (selected === "supervisor") arrow((dog.x|0)+16, 248, f);
+  }
+  positionOverlays();
+}
+function zzz(x, y, f){ const t = (f % 30)/30; cx.globalAlpha = 1 - t; px(x + t*6, y - t*12, 3, 1, "#9fb0c0"); px(x + t*6 + 2, y - t*12 + 1, 1, 1, "#9fb0c0");
+  px(x + t*6, y - t*12 + 2, 3, 1, "#9fb0c0"); cx.globalAlpha = 1; }
+function arrow(x, y, f){ const b = (f >> 2) % 2; px(x-3, y-6+b, 7, 1, "#ffcc4d"); px(x-2, y-5+b, 5, 1, "#ffcc4d"); px(x-1, y-4+b, 3, 1, "#ffcc4d"); px(x, y-3+b, 1, 1, "#ffcc4d"); }
+function botOf(k){ return S && S.bots.find(b => b.key === k); }
+function drawDesk(key, x, y, f){
+  const b = botOf(key); const st = b ? b.status : "down";
+  const s = 3, cw = 12*s;
+  // chair back
+  px(x - 5, y - 40, 22, 38, "#1c2633"); px(x - 4, y - 39, 20, 36, "#243244");
+  // character (behind desk)
+  const chx = x - cw/2 + 6, chy = y - 33;
+  drawChar(cx, key, chx, chy, s, st, f + key.length*7);
+  // desk
+  if (selected === key){ const on = (f >> 2) % 2 ? "rgba(255,204,77,0.9)" : "rgba(255,204,77,0.45)";
+    px(x-38, y-46, 78, 1, on); px(x-38, y+24, 78, 1, on); px(x-38, y-46, 1, 70, on); px(x+39, y-46, 1, 70, on);
+    px(x-37, y-45, 76, 68, "rgba(255,204,77,0.07)"); }
+  px(x-34, y, 68, 5, "#6b4a2f"); px(x-34, y, 68, 1, "#8a6240"); px(x-32, y+5, 64, 13, "#4a3220"); px(x-32, y+5, 64, 1, "#2e1f14");
+  px(x-31, y+18, 3, 4, "#2e1f14"); px(x+28, y+18, 3, 4, "#2e1f14");
+  px(x-6, y+9, 12, 2, BOTC[key]); // name plate color
+  // hands / keyboard
+  px(x-6+6-8, y+1, 16, 2, "#1a222c");
+  if (st === "working"){ const a = (f >> 1) % 2; px(chx + 2*s + (a?2:0), y - 1, 3, 2, PAL[key].s); px(chx + 8*s - (a?0:2), y - 1, 3, 2, PAL[key].s); }
+  else { const p = (st==="idle") ? PAL[key] : grey(PAL[key]); px(chx + 2*s, y - 1, 3, 2, p.s); px(chx + 8*s, y - 1, 3, 2, p.s); }
+  // monitor at left side of desk
+  const mx = x - 31, my = y - 18;
+  px(mx, my, 20, 15, "#1a222c"); px(mx+8, my+15, 4, 3, "#1a222c");
+  let scr = "#06121c";
+  if (st === "working") scr = ((f >> 1) % 5 === 0) ? "#0f3a4f" : "#0b2c3d";
+  else if (st === "idle") scr = "#08202d";
+  px(mx+1, my+1, 18, 13, scr);
+  if (key === "sniper" && (st === "working" || st === "idle")){
+    // wallet graph: holders linked to a funder; the suspicious cluster blinks red while working
+    const N = [[3,3],[9,2],[15,4],[5,10],[12,10],[16,9]], E = [[0,1],[1,2],[1,4],[3,4],[4,5]];
+    E.forEach(([a,b]) => { const [x1,y1] = N[a], [x2,y2] = N[b]; for (let k = 0; k <= 6; k++) px(mx+1+Math.round(x1+(x2-x1)*k/6), my+1+Math.round(y1+(y2-y1)*k/6), 1, 1, "#2b4a5c"); });
+    const hot = st === "working" && (f >> 2) % 2;
+    N.forEach(([nx,ny], i) => px(mx+nx, my+ny, 2, 2, (i===1||i===4) ? (hot ? "#ff4d6a" : "#ff6fb5") : "#4dd9ff"));
+  } else if (key === "pm_late" && (st === "working" || st === "idle")){
+    // countdown bar to the next T-60 decision + a stopwatch hand
+    const L = S && S.late; const tsec = (f >> 3) % 16;
+    px(mx + 2, my + 3, 15, 2, "#2a2340"); px(mx + 2, my + 3, 15 - tsec, 2, "#ffd34d");
+    px(mx + 6, my + 7, 7, 6, "#f4f7fb"); px(mx + 7, my + 8, 5, 4, "#0b1520");
+    const ang = (f * 0.15) % (2 * Math.PI); px(mx + 9 + Math.round(Math.cos(ang) * 2), my + 10 + Math.round(Math.sin(ang) * 2), 1, 1, "#ff4d6a");
+    if (L && L.open) px(mx + 15, my + 9, 2, 2, (f >> 2) % 2 ? "#39ff88" : "#1d8a4c");
+  } else if (key === "pm_maker" && (st === "working" || st === "idle")){
+    // two-sided ladder: green bids (left) / red asks (right), our virtual quotes blink amber at the inside
+    for (let r = 0; r < 5; r++){ const wv = 2 + ((r * 5 + (st === "working" ? (f >> 2) : 0)) % 5);
+      px(mx + 9 - wv, my + 2 + r * 2 + (r > 1 ? 1 : 0), wv, 1, r < 2 ? "#ff4d6a" : "#39ff88"); }
+    for (let r = 0; r < 5; r++){ const wv = 2 + ((r * 3 + 1 + (st === "working" ? (f >> 3) : 0)) % 6);
+      px(mx + 10, my + 2 + r * 2 + (r > 1 ? 1 : 0), wv, 1, r < 2 ? "#ff4d6a" : "#39ff88"); }
+    if (st === "working" && (f >> 2) % 2){ px(mx + 2, my + 6, 3, 1, "#ffcc4d"); px(mx + 14, my + 6, 3, 1, "#ffcc4d"); }
+  } else if (st === "working" || st === "idle"){
+    const c = BOTC[key]; for (let i = 0; i < 16; i++){ const v = Math.sin((i + (st==="working" ? f*0.5 : 0) + key.length) * 0.9) * 3 + Math.sin(i*0.37)*1.5; px(mx+2+i, my+7+v|0, 1, 1, c); }
+  }
+  if (st === "down"){ px(mx+5, my+4, 1, 1, "#ff4d6a"); for (let i = 0; i < 7; i++){ px(mx+6+i, my+3+i, 1, 1, "#ff4d6a"); px(mx+12-i, my+3+i, 1, 1, "#ff4d6a"); } }
+  if (key === "sniper"){   // magnifying glass: sweeps over the wallet graph while working, rests on the desk otherwise
+    const sweep = st === "working" ? Math.round(6 + 5 * Math.sin(f * 0.12)) : 0;
+    const lx = st === "working" ? mx - 1 + sweep : x + 9, ly = st === "working" ? my + 1 + ((f >> 4) % 2) * 3 : y - 10;
+    const rim = (st === "sleeping" || st === "down") ? "#6b7f94" : "#e3bd55";
+    px(lx+2, ly, 4, 1, rim); px(lx+2, ly+7, 4, 1, rim); px(lx, ly+2, 1, 4, rim); px(lx+7, ly+2, 1, 4, rim);
+    px(lx+1, ly+1, 1, 1, rim); px(lx+6, ly+1, 1, 1, rim); px(lx+1, ly+6, 1, 1, rim); px(lx+6, ly+6, 1, 1, rim);
+    px(lx+1, ly+2, 6, 4, "rgba(170,230,255,0.30)"); px(lx+2, ly+1, 4, 6, "rgba(170,230,255,0.30)");
+    if (st === "working" && (f >> 3) % 2) px(lx+2, ly+2, 2, 1, "#fff");
+    for (let k = 0; k < 3; k++) px(lx+7+k, ly+7+k, 2, 2, "#6b4428");
+  }
+  // coffee mug
+  px(x+26, y-5, 5, 5, "#d7e2ee"); px(x+31, y-4, 1, 3, "#d7e2ee"); px(x+27, y-4, 3, 1, "#5a3b22");
+  if (st === "working" && (f >> 2) % 2) px(x+28, y-8, 1, 2, "rgba(215,226,238,.5)");
+  if (st === "sleeping" || st === "down") zzz(chx + 22, chy - 6, f + key.length*5);
+}
+function drawScreenChart(x0, y0, w, h){
+  const F = S && S.focus; if (!F || !F.points || F.points.length < 2) { px(x0 + w/2 - 20, y0 + h/2, 40, 1, "#1d3b2c"); return; }
+  const pts = F.points; let lo = Infinity, hi = -Infinity;
+  pts.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); });
+  [F.tp, F.sl, F.entry].forEach(v => { if (v){ lo = Math.min(lo, v); hi = Math.max(hi, v); } });
+  if (hi <= lo) hi = lo * 1.01 + 1e-12;
+  const pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+  const t0 = pts[0][0], t1 = pts[pts.length-1][0];
+  const X = t => x0 + (t - t0) / Math.max(1, t1 - t0) * (w - 1), Y = v => y0 + (1 - (v - lo)/(hi - lo)) * (h - 1);
+  const up = pts[pts.length-1][1] >= pts[0][1]; const col = up ? "#39ff88" : "#ff4d6a";
+  const hline = (v, c) => { if (!v) return; const yy = Y(v)|0; for (let xx = x0; xx < x0 + w; xx += 3) px(xx, yy, 2, 1, c); };
+  hline(F.tp, "#39ff88"); hline(F.sl, "#ff4d6a"); hline(F.entry, "#ffcc4d");
+  // 1h high/low (amber dotted)
+  const h1 = pts.filter(p => p[0] >= t1 - 3600).map(p => p[1]);
+  if (h1.length > 2 && !F.tp){ hline(Math.max(...h1), "rgba(255,204,77,.45)"); hline(Math.min(...h1), "rgba(255,204,77,.45)"); }
+  let prev = null; const filled = {};
+  for (let i = 0; i < pts.length; i++){
+    const xx = X(pts[i][0]), yy = Y(pts[i][1]);
+    if (prev){ const n = Math.max(Math.abs(xx - prev[0]), Math.abs(yy - prev[1]), 1);
+      for (let k = 0; k <= n; k++){ const ix = prev[0] + (xx - prev[0]) * k / n, iy = prev[1] + (yy - prev[1]) * k / n;
+        px(ix, iy, 1, 1, col); const kx = ix|0; if (!filled[kx]){ filled[kx] = 1; px(kx, iy + 1, 1, Math.max(0, y0 + h - iy - 1), up ? "rgba(57,255,136,0.10)" : "rgba(255,77,106,0.10)"); } } }
+    prev = [xx, yy];
+  }
+  if ((frame >> 2) % 2) px(prev[0]-1, prev[1]-1, 3, 3, "#fff");
+}
+
+/* ------------------------------------------------------------------ overlays */
+const ovs = $("ovs"); const OV = {};
+function ov(id, cls){ if (!OV[id]){ const d = document.createElement("div"); d.className = "ov " + cls; ovs.appendChild(d); OV[id] = d; } return OV[id]; }
+function place(el, x, y){ el.style.left = (x / W * 100) + "%"; el.style.top = (y / H * 100) + "%"; }
+function positionOverlays(){
+  if (!S) return;
+  const sc = ($("room").clientWidth || W) / W, gapPx = DESK_GAP * sc, compact = gapPx < 128;
+  DESKS.forEach(([key, x, y]) => {
+    const b = botOf(key); if (!b) return;
+    const lab = ov("lab-"+key, "dlabel");
+    lab.innerHTML = `<i style="background:${b.status==="working"?"#39ff88":b.status==="idle"?"#4dd9ff":b.status==="down"?"#ff4d6a":"#6b7f94"}"></i><b style="color:${BOTC[key]}">${b.zh}</b>${compact ? "" : " " + key}`;
+    lab.title = `${b.zh} ${key}`;
+    lab.classList.toggle("sel", selected === key); place(lab, x, y + 23);
+    const bub = ov("bub-"+key, "bubble");
+    const show = b.status !== "idle" || ((frame >> 5) % (DESKS.length + 1)) === DESKS.findIndex(d => d[0] === key) || selected === key;
+    bub.textContent = (b.status === "sleeping" ? "Zzz… " : b.status === "down" ? "（离线）" : "") + (b.say || "");
+    bub.classList.toggle("sleep", b.status === "sleeping" || b.status === "down");
+    bub.style.maxWidth = Math.round(Math.min(230, Math.max(84, gapPx - 6))) + "px";
+    const hat = (ACC[key] && ACC[key].dy < 0) ? -ACC[key].dy * 3 : 0;
+    bub.style.opacity = show ? 1 : 0; place(bub, x + 6, y - 37 - hat);
+  });
+  const sup = botOf("supervisor");
+  if (sup){ const lab = ov("lab-sup", "dlabel"); lab.innerHTML = `<i style="background:${sup.alive?"#39ff88":"#ff4d6a"}"></i><b>看门狗</b> watchdog`;
+    lab.classList.toggle("sel", selected === "supervisor");
+    const dx = sup.alive ? (dog.x + 16) : 24; place(lab, Math.min(Math.max(dx, 30), W - 30), 283);
+    const bub = ov("bub-sup", "bubble"); bub.textContent = sup.say; const show = ((frame >> 5) % (DESKS.length + 1)) === DESKS.length || selected === "supervisor";
+    bub.style.opacity = show ? 1 : 0; place(bub, Math.min(Math.max(dx, 50), W - 50), 258); }
+  const F = S.focus, sl = ov("scr", ""); sl.id = "scrlabel";
+  if (F){ const c = F.chg1h ?? 0;
+    sl.innerHTML = `<span class="sym">${esc(F.symbol)}</span> $${fmtPx(F.price)} <span class="${c>=0?"up":"down"}">1h ${c>=0?"+":""}${c.toFixed(2)}%</span>` +
+      ` <span class="w">· ${esc(F.why)}${F.range!=null?` · 1h 区间 ${F.range.toFixed(2)}%`:""}${F.tp?` · 止盈 ${fmtPx(F.tp)} 止损 ${fmtPx(F.sl)}`:""}</span>`;
+  } else sl.innerHTML = `<span class="w">暂无行情</span>`;
+  place(sl, 66, 8);
+  const ck = ov("clk", ""); ck.id = "clock"; ck.textContent = new Date().toLocaleTimeString("zh-CN", {timeZone:TZ, hour12:false}); place(ck, 278, 1.2);
+}
+
+/* ------------------------------------------------------------------ panels */
+function render(){
+  const k = S.kpi, h = S.header;
+  $("h-run").textContent = dur(S.run_s); $("h-cands").textContent = `${h.cands}（24h ${h.uniq24}）`;
+  $("h-sig").textContent = h.signals; $("h-veto").textContent = h.vetoes; $("h-pos").textContent = h.open_pos || "无";
+  $("h-bets").textContent = `${h.open_bets} 注`;
+  $("h-pm").textContent = S.late ? `尾盘 ${fmt$(S.late.equity,0)}/${fmt$(S.late.budget,0)}` : S.pm ? `${S.pm.pnl>=0?"+":""}${fmt$(S.pm.pnl)}（${S.pm.fills} 笔）` : "—";
+  const SG = S.strategy || {}; $("h-strat").textContent = `策略 ${SG.version || "v1"}`;
+  if (SG.rules) $("h-strat").title = `横盘带 ${SG.rules.band[0]}–${SG.rules.band[1]}%，底部 ${Math.round(SG.rules.entry_zone*100)}%，止盈 ${Math.round(SG.rules.tp_frac*100)}%，止损 低点−max(${SG.rules.sl_frac}×区间, ${SG.rules.sl_min_pct}%)，净盈亏比 ≥ ${SG.rules.min_rr}`;
+  $("k-eq").textContent = fmt$(k.equity); $("k-eq-s").textContent = `初始 ${fmt$(k.start,0)}`;
+  const pc = k.pnl >= 0 ? "up" : "down";
+  $("k-pnl").className = "v " + pc; $("k-pnl").textContent = `${k.pnl>=0?"+":""}${fmt$(k.pnl)}`;
+  $("k-pnl-s").innerHTML = `<span class="${pc}">${k.pnl_pct>=0?"+":""}${k.pnl_pct.toFixed(2)}%</span> · 已实现 ${fmt$(k.realized)}`;
+  $("k-pnl-card").style.setProperty("--accent", k.pnl >= 0 ? "var(--green)" : "var(--red)");
+  $("k-pos").textContent = fmt$(k.pos_val + k.sb_val); $("k-pos-s").textContent = `币 ${fmt$(k.pos_val)} · 侧投注 ${fmt$(k.sb_val)}`;
+  $("k-win").textContent = k.win_rate == null ? "—" : k.win_rate.toFixed(0) + "%";
+  const vs = (S.strategy||{}).stats || {}; const wr = v => !vs[v] ? "—" : (vs[v].win_rate == null ? "—" : vs[v].win_rate.toFixed(0)+"%") + `(${vs[v].closed}笔)`;
+  $("k-win-s").textContent = k.closed ? Object.keys(vs).map(v => `${v} ${wr(v)}`).join(" · ") : "尚无已平仓交易";
+  $("k-closed").textContent = k.closed; $("k-closed-s").textContent = `下单 ${h.orders} · 现金 ${fmt$(k.cash)}`;
+  renderEquity(); renderLog(); renderCands(); renderPos(); renderCards();
+}
+function renderEquity(){
+  const svg = $("eqsvg"); const r = svg.getBoundingClientRect(); const w = r.width, h = r.height;
+  const pts = S.equity; const st = S.kpi.start;
+  let lo = Math.min(st, ...pts.map(p=>p[1])), hi = Math.max(st, ...pts.map(p=>p[1]));
+  const pad = Math.max((hi - lo) * 0.25, st * 0.002); lo -= pad; hi += pad;
+  const L = 52, R = 12, T = 14, B = 22;
+  const t0 = pts[0][0], t1 = Math.max(pts[pts.length-1][0], t0 + 60);
+  const X = t => L + (t - t0) / (t1 - t0) * (w - L - R), Y = v => T + (1 - (v - lo)/(hi - lo)) * (h - T - B);
+  const up = S.kpi.equity >= st, col = up ? "#39ff88" : "#ff4d6a";
+  let d = pts.map((p,i) => (i ? "L" : "M") + X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join("");
+  const area = d + `L${X(pts[pts.length-1][0]).toFixed(1)},${h-B}L${X(t0).toFixed(1)},${h-B}Z`;
+  let g = `<defs><linearGradient id="eg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>`;
+  for (let i = 0; i <= 3; i++){ const v = lo + (hi - lo) * i / 3, y = Y(v);
+    g += `<line x1="${L}" x2="${w-R}" y1="${y}" y2="${y}" stroke="#16222f"/><text x="${L-6}" y="${y+4}" fill="#6b7f94" font-size="10" text-anchor="end">$${v.toFixed(v>9999?0:1)}</text>`; }
+  for (let i = 0; i <= 3; i++){ const t = t0 + (t1 - t0) * i / 3; g += `<text x="${X(t)}" y="${h-6}" fill="#6b7f94" font-size="10" text-anchor="${i===0?"start":i===3?"end":"middle"}">${tsg(t,false)}</text>`; }
+  const ys = Y(st); g += `<line x1="${L}" x2="${w-R}" y1="${ys}" y2="${ys}" stroke="#ffcc4d" stroke-dasharray="4 4" stroke-opacity=".7"/><text x="${L+4}" y="${ys-4}" fill="#ffcc4d" font-size="10">初始 $${st.toFixed(0)}</text>`;
+  g += `<path d="${area}" fill="url(#eg)"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2" style="filter:drop-shadow(0 0 3px ${col})"/>`;
+  const sw = (S.strategy||{}).switch_ts;
+  if (sw && sw > t0 && sw <= t1){ const xs = X(sw); g += `<line x1="${xs}" x2="${xs}" y1="${T}" y2="${h-B}" stroke="#4dd9ff" stroke-dasharray="3 3" stroke-opacity=".8"/><text x="${xs-4}" y="${T+10}" fill="#4dd9ff" font-size="10" text-anchor="end">${esc((S.strategy||{}).version||"")} 上线</text>`; }
+  const lp = pts[pts.length-1]; g += `<circle cx="${X(lp[0])}" cy="${Y(lp[1])}" r="3.5" fill="${col}"><animate attributeName="r" values="3;6;3" dur="1.6s" repeatCount="indefinite"/></circle>`;
+  g += `<text x="${X(lp[0])-6}" y="${Y(lp[1]) + (Y(lp[1]) < T + 20 ? 16 : -8)}" fill="${col}" font-size="12" font-weight="700" text-anchor="end">${fmt$(lp[1])}</text>`;
+  svg.innerHTML = g; $("eq-range").textContent = `${pts.length - 1} 个快照 · 每 5 分钟`;
+}
+function renderLog(){
+  const ev = S.events.filter(e => !selected || e.bot === selected).slice(0, 60);
+  $("filterhint").textContent = selected ? `仅显示：${(botOf(selected)||{}).zh || selected}（再点一次取消）` : "点击下方 Bot 卡片筛选";
+  const newest = S.events.length ? S.events[0].ts : 0;
+  $("log").innerHTML = ev.length ? ev.map(e => `<div class="ev ${e.level==="ERROR"?"err":""} ${e.ts > lastEventTs && lastEventTs ? "new":""}"><span class="t">${tsg(e.ts)}</span>` +
+    `<span class="b" style="color:${BOTC[e.bot]||"#ccc"}">${e.bot==="supervisor" ? "看门狗" : ((botOf(e.bot)||{}).zh || e.bot) + "·" + (KINDZH[e.kind]||e.kind)}</span><span class="m">${esc(e.message)}</span></div>`).join("")
+    : `<div class="empty">暂无事件</div>`;
+  lastEventTs = newest;
+}
+const CHAIN_LAB = {solana:"SOL", ethereum:"ETH", base:"BASE", bsc:"BNB", robinhood:"RH", arbitrum:"ARB", polygon:"POL", avalanche:"AVAX", optimism:"OP", sui:"SUI", ton:"TON", tron:"TRX", hyperevm:"HYPE"};
+const CHAIN_COL = {solana:"#b388ff", ethereum:"#8fa8ff", base:"#4d8bff", bsc:"#f3c64d", robinhood:"#c6ff4d", arbitrum:"#5fb4ff", polygon:"#a67bff", avalanche:"#ff6b6b", optimism:"#ff5a7a", sui:"#6fd3ff", ton:"#38b6ff", tron:"#ff4d4d", hyperevm:"#5ef2c4"};
+function chainBadge(c){ const ch = c.chain || "solana";
+  return `<span class="chain" style="background:${CHAIN_COL[ch]||"#9aa"}" title="链：${esc(ch)}">${esc(CHAIN_LAB[ch]||ch)}</span>` +
+    (c.fomo === false ? `<span class="nofomo" title="这条链 fomo 不支持：只做模拟，实盘无法在 fomo 下单">非fomo</span>` : ""); }
+function renderCands(){
+  const [lo, hi] = S.band, maxR = 25;
+  const SC = S.scan || {}, U = SC.universe || {}, LS = SC.last_sweep || {}, LR = SC.last_rotation || {};
+  const byc = Object.entries(SC.by_chain || {}).sort((a,b)=>b[1]-a[1]).map(([k,v]) => `${CHAIN_LAB[k]||k} ${v}`).join(" · ");
+  $("band-note").innerHTML = `<span style="color:#39ff88">▮</span> ${lo}–${hi}% 横盘带` + (U.total ? ` · <span title="全市场币池（多链）：发现源每轮 ${LS.seconds?Math.round(LS.seconds/60)+" 分钟":"…"}，DexScreener 逐个核验一轮 ${LR.seconds?Math.round(LR.seconds/60)+" 分钟":"…"}；合格按链：${esc(byc)}">全市场 ${U.total.toLocaleString("en-US")} 币</span>` : "");
+  if (!S.cands.length){ $("cands").innerHTML = `<div class="empty">暂无扫描数据</div>`; return; }
+  const tagzh = {in:"带内", wide:"过宽", narrow:"过窄"};
+  $("cands").innerHTML = `<table><tr><th>币</th><th>市值</th><th style="text-align:left">1h 区间（绿=${S.band[0]}–${S.band[1]}%）</th><th>1h%</th><th>判定</th></tr>` +
+    S.cands.map(c => { const r = c.range, col = c.band==="in" ? "#39ff88" : c.band==="narrow" ? "#4dd9ff" : "#ff9d3d";
+      const bar = `<span class="rbar"><span class="band" style="left:${lo/maxR*100}%;width:${(hi-lo)/maxR*100}%"></span>` +
+        (r!=null ? `<span class="fill" style="width:${Math.min(r,maxR)/maxR*100}%;background:${col}"></span>` : "") + `</span>`;
+      const why = c.band === "in" && c.why ? c.why : (tagzh[c.band] || "无数据");
+      const sf = c.safety; let badge = (c.chain && c.chain !== "solana") ? "" : `<span class="sbadge na" title="防狙击检查排队中（未检查前默认放行）">?</span>`;
+      if (sf){ const f = v => v==null ? "-" : v.toFixed(1)+"%";
+        const tip = sf.st === "error" ? `链上数据暂不可用，先放行（${sf.reason||""}）` :
+          `狙击+捆绑+开发者+关联钱包当前合计 ${f(sf.comb)}｜资金同源簇 ${f(sf.cluster)}｜RugCheck 小内部人网络 ${f(sf.net)}｜前10持仓（去池子）${f(sf.top10)}｜开盘区块：${sf.launch==="ok" ? `狙击 ${sf.snipers} 个、捆绑 ${sf.bundlers} 个` : "历史太长未查"}｜${sf.age_h}h 前检查` + (sf.reason ? `｜${sf.reason}` : "");
+        badge = sf.st === "exclude" ? `<span class="sbadge bad" title="${esc(tip)}">⚠</span>` : sf.st === "error" ? `<span class="sbadge na" title="${esc(tip)}">?</span>` : `<span class="sbadge ok" title="${esc(tip)}">✓</span>`; }
+      return `<tr><td style="color:${(S.focus&&S.focus.token===c.token)?"#fff":"#c9d6e3"};font-weight:${(S.focus&&S.focus.token===c.token)?700:400}">${esc(c.symbol.slice(0,10))} ${chainBadge(c)} ${badge}</td><td>${fmtM(c.mcap)}</td>` +
+        `<td style="text-align:left">${bar} <span style="display:inline-block;width:40px;text-align:right">${r!=null?r.toFixed(1)+"%":"-"}</span></td>` +
+        `<td class="${c.chg1h>=0?"up":"down"}">${c.chg1h>=0?"+":""}${(c.chg1h||0).toFixed(1)}</td>` +
+        `<td><span class="tag ${c.band||"na"}">${esc(why)}</span></td></tr>`; }).join("") + `</table>`;
+}
+function renderPos(){
+  const k = S.kpi; $("cash-note").textContent = `现金 ${fmt$(k.cash)}`;
+  let hs = "";
+  const LT = S.late;
+  if (LT){
+    hs += `<div class="sect" style="color:#ffd34d">Polymarket 尾盘吃单 ${esc(LT.version)}（纯模拟 · 独立 $${LT.budget.toLocaleString("en-US")} 预算 · 未经证实）</div>` +
+      `<div class="empty" style="padding-top:0;line-height:1.5">权益 <b>${fmt$(LT.equity)}</b> · 已结算 ${LT.n} 笔（赢 ${LT.wins}）<span class="${LT.pnl>=0?"up":"down"}">${LT.pnl>=0?"+":""}${fmt$(LT.pnl)}</span>` +
+      ` · 持仓 ${LT.open} 笔（${fmt$(LT.open_cost)}）· 没吃到 ${LT.missed} · 评估 ${LT.evals} 盘<br>当前回撤 <span class="${LT.dd<0?"down":""}">${fmt$(LT.dd)}</span> · 最大回撤 ${fmt$(LT.maxdd)} · 手续费 ${fmt$(LT.fees)}</div>`;
+    if (LT.recent.length) hs += `<table>` + LT.recent.map(r => `<tr><td>${esc(r.slug.replace("-updown-", " ").replace(/-\d+$/, ""))} ${tsg(r.ts,false)}</td><td>${esc(r.side)}</td><td>${r.fill_px==null?"-":r.fill_px.toFixed(2)}</td>` +
+      `<td>${r.status==="missed"?"没吃到":r.status==="open"?"持仓":""}</td><td class="${(r.pnl||0)>=0?"up":"down"}">${r.pnl==null?(r.cost?fmt$(r.cost):""):((r.pnl>=0?"+":"")+fmt$(r.pnl))}</td></tr>`).join("") + `</table>`;
+  }
+  const LL = S.late_live, LCMP = S.late_compare;
+  if (LL){
+    const syncAge = LL.sync_mtime != null ? (S.generated - LL.sync_mtime) : null;
+    const syncTxt = syncAge == null ? "" : (syncAge < 60 ? "刚刚同步" : syncAge < 3600 ? `数据同步于 ${Math.round(syncAge/60)} 分钟前` : `数据同步于 ${(syncAge/3600).toFixed(1)} 小时前`);
+    const stLabel = s => s==="missed"?"没吃到":s==="open"?"持仓":s==="error"?"下单异常":s==="settled"?"已结算":(s||"");
+    const eqNote = LL.equity_source === "wallet"
+      ? ` · <span style="color:#9aa8b8">与网站对齐（pUSD ${fmt$(LL.wallet_cash)}${LL.open ? ` + 持仓成本 ${fmt$(LL.open_cost)}` : ""}）</span>`
+      : (LL.strategy_equity != null ? ` · <span style="color:#9aa8b8">策略账本 ${fmt$(LL.strategy_equity)}</span>` : "");
+    hs += `<div class="sect" style="color:#ff7a59">Polymarket 尾盘实盘 ${esc(LL.version)}（真钱 · 对比用 · $${LL.budget.toLocaleString("en-US")} 预算）</div>` +
+      `<div class="empty" style="padding-top:0;line-height:1.5">权益 <b>${fmt$(LL.equity)}</b>${eqNote} · 已结算 ${LL.n} 笔（赢 ${LL.wins}）<span class="${LL.pnl>=0?"up":"down"}">${LL.pnl>=0?"+":""}${fmt$(LL.pnl)}</span>` +
+      ` · 持仓 ${LL.open} 笔（${fmt$(LL.open_cost)}）· 没吃到 ${LL.missed} · 下单异常 ${LL.errors} · 成交 ${LL.filled} · 评估 ${LL.evals} 盘<br>` +
+      `当前回撤 <span class="${LL.dd<0?"down":""}">${fmt$(LL.dd)}</span> · 最大回撤 ${fmt$(LL.maxdd)} · 手续费 ${fmt$(LL.fees)}` +
+      (syncTxt ? ` · <span style="color:#9aa8b8">${syncTxt}</span>` : "") +
+      (LL.hb_age != null ? ` · 心跳 ${ago(LL.hb_age)}${LL.hb_pid ? ` pid ${LL.hb_pid}` : ""}` : "") + `</div>`;
+    if (LL.recent && LL.recent.length) hs += `<table>` + LL.recent.map(r => `<tr><td>${esc((r.slug||"").replace("-updown-", " ").replace(/-\d+$/, ""))} ${tsg(r.ts,false)}</td><td>${esc(r.side||"")}</td><td>${r.fill_px==null?"-":r.fill_px.toFixed(2)}</td>` +
+      `<td title="${esc(r.note||"")}">${stLabel(r.status)}</td><td class="${(r.pnl||0)>=0?"up":"down"}">${r.pnl==null?(r.cost?fmt$(r.cost):""):((r.pnl>=0?"+":"")+fmt$(r.pnl))}</td></tr>`).join("") + `</table>`;
+  } else {
+    hs += `<div class="sect" style="color:#ff7a59">Polymarket 尾盘实盘</div><div class="empty" style="padding-top:0">实盘数据尚未同步（需要 /data/pm_live.db）</div>`;
+  }
+  if (LCMP && (LCMP.paper || LCMP.live)){
+    const p = LCMP.paper || {}, l = LCMP.live || {};
+    const wr = v => v == null ? "—" : v.toFixed(0) + "%";
+    const cell = (v, money) => v == null ? "—" : (money ? `<span class="${v>=0?"up":"down"}">${v>=0?"+":""}${fmt$(v)}</span>` : v);
+    hs += `<div class="sect" style="color:#c9d6e3">模拟 vs 实盘（同策略 late-v1）</div>` +
+      `<table><tr><th></th><th>成交</th><th>胜率</th><th>盈亏</th><th>未成交</th><th>下单异常</th><th>权益</th></tr>` +
+      `<tr><td style="color:#ffd34d">模拟</td><td>${cell(p.n)}</td><td>${wr(p.win_rate)}</td><td>${cell(p.pnl,true)}</td><td>${cell(p.missed)}</td><td>${cell(p.errors)}</td><td>${cell(p.equity,true)}</td></tr>` +
+      `<tr><td style="color:#ff7a59">实盘</td><td>${cell(l.n)}</td><td>${wr(l.win_rate)}</td><td>${cell(l.pnl,true)}</td><td>${cell(l.missed)}</td><td>${cell(l.errors)}</td><td>${cell(l.equity,true)}</td></tr>` +
+      `</table>`;
+  }
+  const vs = (S.strategy||{}).stats || {}, cur = (S.strategy||{}).version;
+  const cellV = (v, f) => vs[v] ? f(vs[v]) : "—";
+  const rows = [["信号", d => d.signals], ["盈亏比跳过", d => d.rr_skips], ["否决", d => d.vetoes], ["平仓", d => d.closed],
+    ["胜率", d => d.win_rate == null ? "—" : d.win_rate.toFixed(0) + "%"],
+    ["盈亏", d => `<span class="${d.pnl>=0?"up":"down"}">${d.pnl>=0?"+":""}${fmt$(d.pnl)}</span>`],
+    ["每笔均", d => d.avg_pnl_pct == null ? "—" : `${d.avg_pnl_pct>=0?"+":""}${d.avg_pnl_pct.toFixed(2)}%`]];
+  hs += `<div class="sect">币策略版本对比</div><table><tr><th>策略</th>${rows.map(r => `<th>${r[0]}</th>`).join("")}</tr>` + Object.keys(vs).map(v =>
+    `<tr><td style="color:${v===cur?"#4dd9ff":"#c9d6e3"};font-weight:${v===cur?700:400}">${v}${v===cur?" ◀当前":""}</td>${rows.map(r => `<td>${cellV(v, r[1])}</td>`).join("")}</tr>`).join("") + `</table>`;
+  const P = S.pm;
+
+  if (P){
+    const c = v => v == null ? "—" : `<span class="${v>=0?"up":"down"}">${v>=0?"+":""}${(v*100).toFixed(1)}¢</span>`;
+    const L = P.lat || {};
+    hs += `<div class="sect" style="color:#2ee6c5">Polymarket 做市 v1（已结束 · 报价关闭 · 原 $${P.budget} 预算）${P.halted ? ' <span class="down">⛔ 今日已停</span>' : ""}</div>` +
+      `<div class="empty" style="padding-top:0;line-height:1.5">挂单 ${P.quotes} 次 · 虚拟成交 ${P.fills} 笔 / ${P.shares.toFixed(0)} 股 · 已结算 ${P.settled} 盘 ` +
+      `<span class="${P.pnl>=0?"up":"down"}">${P.pnl>=0?"+":""}${fmt$(P.pnl)}</span>（返佣估 ${fmt$(P.rebate)}）· 未结算估值 ${fmt$(P.open_mark)}<br>` +
+      `每股 markout：1秒 ${c(P.mo1)} · 10秒 ${c(P.mo10)} · 60秒 ${c(P.mo60)} · 撤改单延迟 ${L.requote ? Math.round(L.requote) + "ms" : "—"} · WS ${L.ws_pm ? "通" : "断"}</div>`;
+    if (P.open.length) hs += `<table><tr><th>盘口</th><th>剩余</th><th>模型</th><th>中间价</th><th>库存</th><th>估值</th></tr>` + P.open.slice(0,4).map(r =>
+      `<tr><td>${r.asset.toUpperCase()} ${r.dur_s/60}分 ${tsg(r.end_ts,false)}</td><td>${Math.max(0, Math.round(r.end_ts - S.generated))}s</td><td>${r.last_fair==null?"-":r.last_fair.toFixed(2)}</td><td>${r.last_mid==null?"-":r.last_mid.toFixed(3)}</td>` +
+      `<td>${(r.net_shares||0)>=0?"+":""}${(r.net_shares||0).toFixed(0)}</td><td class="${r.mark>=0?"up":"down"}">${r.mark>=0?"+":""}${fmt$(r.mark)}</td></tr>`).join("") + `</table>`;
+  }
+  hs += `<div class="sect">币仓位（最多 1 个）</div>`;
+  if (S.positions.length) hs += `<table><tr><th>币</th><th>入场</th><th>现价</th><th>投入</th><th>浮盈亏</th></tr>` + S.positions.map(p =>
+    `<tr><td>${esc(p.symbol)}</td><td>${fmtPx(p.entry_mkt_price)}</td><td>${fmtPx(p.last_price)}</td><td>${fmt$(p.cost_usd)}</td><td class="${p.unreal>=0?"up":"down"}">${p.unreal>=0?"+":""}${fmt$(p.unreal)}</td></tr>`).join("") + `</table>`;
+  else hs += `<div class="empty">空仓 — 等待横盘底部信号</div>`;
+  hs += `<div class="sect">Polymarket 侧投注（实验性）</div>`;
+  if (S.bets.length) hs += `<table><tr><th>市场 / 押注</th><th>入场</th><th>现价</th><th>本金</th><th>盈亏</th></tr>` + S.bets.map(b =>
+    `<tr><td title="${esc(b.question)}" style="max-width:170px;overflow:hidden;text-overflow:ellipsis">${esc(b.outcome)} · ${esc(b.question)}</td><td>${b.entry_price.toFixed(3)}</td><td>${b.cur.toFixed(3)}</td><td>${fmt$(b.stake_usd)}</td>` +
+    `<td class="${b.unreal>=0?"up":"down"}">${b.unreal>=0?"+":""}${fmt$(b.unreal)}${b.status==="settled"?" ✓":""}</td></tr>`).join("") + `</table>`;
+  else hs += `<div class="empty">暂无侧投注</div>`;
+  if (S.closed.length) hs += `<div class="sect">最近平仓</div><table>` + S.closed.slice(0,4).map(c => `<tr><td>${esc(c.strategy_version||"v1")} ${esc(c.symbol)}</td><td>${tsg(c.close_ts,false)}</td><td>${c.exit_reason}</td><td class="${c.pnl_usd>=0?"up":"down"}">${fmt$(c.pnl_usd)}</td></tr>`).join("") + `</table>`;
+  $("pos").innerHTML = hs;
+}
+const cardCtx = {};
+function renderCards(){
+  const box = $("cards");
+  if (!box.children.length){
+    S.bots.forEach(b => { const d = document.createElement("div"); d.className = "panel card"; d.dataset.key = b.key;
+      d.innerHTML = `<canvas width="24" height="24"></canvas><div class="n"></div><div class="st"></div><div class="la"></div>`;
+      d.onclick = () => { selected = selected === b.key ? null : b.key; render(); }; box.appendChild(d); cardCtx[b.key] = d.querySelector("canvas").getContext("2d"); });
+  }
+  S.bots.forEach(b => { const d = box.querySelector(`[data-key="${b.key}"]`); if (!d) return;
+    d.classList.toggle("sel", selected === b.key);
+    d.querySelector(".n").innerHTML = `<span style="color:${BOTC[b.key]}">${b.zh}</span><small>${b.key}</small>`;
+    d.querySelector(".st").innerHTML = `<span class="pill ${b.status}">${STZH[b.status]}</span> <span style="color:#6b7f94">心跳 ${b.key==="supervisor" ? (b.alive?"进程在线":"—") : ago(b.hb_age)}</span>`;
+    d.querySelector(".la").textContent = b.say || b.role;
+    d.title = b.role;
+  });
+}
+function drawCards(){
+  if (!S) return;
+  S.bots.forEach(b => { const c = cardCtx[b.key]; if (!c) return; c.clearRect(0,0,24,24);
+    if (b.key === "supervisor"){ drawRows(c, b.alive ? (((frame>>2)%2)?DOG:DOG2) : DOGSLEEP, b.alive?DOGPAL:grey(DOGPAL), 4, 9, 1); return; }
+    const pal0 = PAL[b.key]; const st = b.status;
+    let pal = (st==="sleeping"||st==="down") ? grey(pal0) : pal0;
+    const bob = st === "idle" ? ((frame >> 3) % 2) : (st === "working" ? ((frame >> 1) % 2) : 0);
+    drawRows(c, TORSO, pal, 6, 15, 1); drawRows(c, HEAD, pal, 6, 8 + bob, 1); const a = ACC[b.key]; if (a) drawRows(c, a.rows, pal, 6, 8 + bob + a.dy, 1);
+  });
+}
+
+/* ------------------------------------------------------------------ loop */
+function tick(){ drawRoom(); drawCards(); $("h-clock").textContent = new Date().toLocaleTimeString("zh-CN", {timeZone:TZ, hour12:false}); }
+let FAILS = 0, POLLING = false;
+const _qs = new URLSearchParams(location.search);
+if (_qs.get("k")) try { localStorage.setItem("pb_floor_k", _qs.get("k")); } catch(_){}
+const FLOOR_TOKEN = _qs.get("k") || (function(){ try { return localStorage.getItem("pb_floor_k") || ""; } catch(_){ return ""; } })();
+const FLOOR_API = String(window.FLOOR_API || _qs.get("api") || "").replace(/\/$/, "");
+function setMode(html){ $("h-mode").innerHTML = html; }
+function stateUrl(){
+  const abs = FLOOR_API ? (FLOOR_API + "/api/state") : "api/state";
+  const q = new URLSearchParams(); q.set("_", String(Date.now()));
+  if (FLOOR_TOKEN) q.set("k", FLOOR_TOKEN);
+  return abs + "?" + q.toString();
+}
+async function poll(){
+  if (POLLING) return; POLLING = true;
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+  try {
+    if (FLOOR_API && !FLOOR_TOKEN) {
+      setMode(`<span style="color:#ff4d6a">● 缺少访问令牌：请用 ?k=你的令牌 打开一次</span>`);
+      FAILS++; return;
+    }
+    const r = await fetch(stateUrl(), {
+      cache: "no-store",
+      credentials: FLOOR_API ? "omit" : "same-origin",
+      signal: ctl.signal
+    });
+    if (r.status === 403) { FAILS++; setMode(`<span style="color:#ff4d6a">● 访问令牌失效，请用带 ?k= 的链接重新打开</span>`); }
+    else if (!r.ok) { throw new Error("HTTP " + r.status); }
+    else {
+      const data = await r.json(); S = data; FAILS = 0;
+      try { render(); } catch(re) { console.error("render error", re); }
+      setMode(`<span class="dot"></span>实时 · 每 5 秒刷新` + (FLOOR_API ? ` · 远程` : ""));
+    }
+  } catch(e) {
+    FAILS++; console.warn("poll failed", e);
+    setMode(`<span style="color:#ff4d6a">● 连接中断，重试中…（${FAILS}）</span>`);
+    if (FAILS >= 6) { location.reload(); }
+  } finally { clearTimeout(to); POLLING = false; }
+}
+// Live remote (GitHub Pages) always polls; embedded snapshot only when no FLOOR_API.
+if (FLOOR_API) { poll(); setInterval(poll, 5000); }
+else if (window.__STATE__){ S = window.__STATE__; $("h-mode").innerHTML = `<span style="color:#ffcc4d">■ 快照 ${new Date(S.generated*1000).toLocaleString("zh-CN",{timeZone:TZ,hour12:false})} SGT</span>`; render(); }
+else { poll(); setInterval(poll, 5000); }
+setInterval(tick, 100);
+window.addEventListener("resize", () => S && renderEquity());
+</script>
+</body>
+</html>
