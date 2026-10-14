@@ -76,6 +76,13 @@ th:first-child,td:first-child{text-align:left}
 #pos th{padding:6px 8px}
 #pos td{padding:5px 8px}
 #pos .empty{font-size:13px;line-height:1.55;padding:6px 12px 8px}
+#pos .oc-scroll{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:4px;margin:4px 10px 10px;background:rgba(0,0,0,.18)}
+#pos .oc-scroll table{font-size:11.5px}
+#pos .oc-scroll th{position:sticky;top:0;z-index:1;background:#0e1824}
+#pos .oc-scroll td.oc-side{text-align:left;max-width:168px;white-space:normal;line-height:1.35;vertical-align:top}
+#pos .oc-scroll td.oc-mkt{text-align:left;white-space:nowrap}
+#pos .oc-scroll .oc-src-p{color:#ffd34d} #pos .oc-scroll .oc-src-l{color:#ff7a59}
+#pos .oc-hint{color:var(--dim);font-size:11px;padding:0 12px 4px}
 .rbar{position:relative;width:84px;height:9px;background:#0a1018;border:1px solid #1d2b3b;display:inline-block;vertical-align:middle}
 .rbar .band{position:absolute;top:0;height:100%;background:rgba(57,255,136,.18);border-left:1px solid rgba(57,255,136,.6);border-right:1px solid rgba(57,255,136,.6)}
 .rbar .fill{position:absolute;left:0;top:1px;height:5px}
@@ -529,6 +536,45 @@ function renderPos(){
       `<tr><td style="color:#ffd34d">模拟</td><td>${cell(p.n)}</td><td>${wr(p.win_rate)}</td><td>${cell(p.pnl,true)}</td><td>${cell(p.missed)}</td><td>${cell(p.errors)}</td><td>${cell(p.equity,true)}</td></tr>` +
       `<tr><td style="color:#ff7a59">实盘</td><td>${cell(l.n)}</td><td>${wr(l.win_rate)}</td><td>${cell(l.pnl,true)}</td><td>${cell(l.missed)}</td><td>${cell(l.errors)}</td><td>${cell(l.equity,true)}</td></tr>` +
       `</table>`;
+  }
+  const LOC = S.late_order_compare;
+  if (LOC && ((LOC.aligned && LOC.aligned.length) || (LOC.timeline && LOC.timeline.length))){
+    const stZh = s => s==="settled"?"已结算":s==="open"?"持仓":s==="missed"?"没吃到":s==="error"?"下单异常":(s||"—");
+    const mkt = (slug, asset, dur) => {
+      const base = (slug||"").replace("-updown-", " ").replace(/-\d+$/, "");
+      const d = dur ? `${Math.round(dur/60)}m` : "";
+      return esc((base || (asset||"").toUpperCase()) + (d && !base.includes(d) ? ` ${d}` : ""));
+    };
+    const sideCell = o => {
+      if (!o) return `<td class="oc-side" style="color:#6b7f94">—</td>`;
+      const px = o.fill_px == null ? "—" : Number(o.fill_px).toFixed(2);
+      const cost = o.cost == null ? "" : fmt$(o.cost);
+      const pnlHtml = o.pnl == null ? "" : `<span class="${o.pnl>=0?"up":"down"}">${o.pnl>=0?"+":""}${fmt$(o.pnl)}</span>`;
+      const note = o.note ? esc(o.note) : "";
+      const edge = o.edge != null ? ` edge ${(o.edge*100).toFixed(1)}¢` : "";
+      return `<td class="oc-side" title="${note}${edge}"><b>${esc(o.side||"")}</b> · ${stZh(o.status)}` +
+        `<br>${px}${cost ? " · "+cost : ""}${pnlHtml ? " · "+pnlHtml : ""}` +
+        `${note ? `<br><span style="color:#6b7f94">${note.length>28?note.slice(0,28)+"…":note}</span>` : ""}</td>`;
+    };
+    const nBoth = LOC.n_aligned_both != null ? LOC.n_aligned_both : (LOC.aligned||[]).filter(e => e.paper && e.live).length;
+    hs += `<div class="sect" style="color:#c9d6e3">订单明细对比（按市场对齐 · 模拟 ${esc(LOC.paper_version||"late-v1")} vs 实盘 ${esc(LOC.live_version||"live-late-v1")}）</div>` +
+      `<div class="oc-hint">同 slug 并排 · 双侧对齐 ${nBoth} 对 · 近期模拟 ${LOC.n_paper||0} / 实盘 ${LOC.n_live||0} 条 · 悬停看备注</div>` +
+      `<div class="oc-scroll"><table><tr><th>到期</th><th>市场</th><th style="color:#ffd34d">模拟</th><th style="color:#ff7a59">实盘</th></tr>` +
+      (LOC.aligned||[]).map(e => {
+        const t = e.end_ts || (e.paper&&e.paper.ts) || (e.live&&e.live.ts);
+        return `<tr><td>${t?tsg(t,false):"—"}</td><td class="oc-mkt">${mkt(e.slug,e.asset,e.dur_s)}</td>${sideCell(e.paper)}${sideCell(e.live)}</tr>`;
+      }).join("") + `</table></div>`;
+    if (LOC.timeline && LOC.timeline.length){
+      hs += `<div class="sect" style="color:#c9d6e3">订单时间线（按触发时间 · paper|live）</div>` +
+        `<div class="oc-scroll" style="max-height:220px"><table><tr><th>时间</th><th>来源</th><th>市场</th><th>方向</th><th>状态</th><th>成交价</th><th>成本</th><th>盈亏</th></tr>` +
+        LOC.timeline.map(r => {
+          const src = r.src === "live" ? `<span class="oc-src-l">实盘</span>` : `<span class="oc-src-p">模拟</span>`;
+          const pnl = r.pnl == null ? "—" : `<span class="${r.pnl>=0?"up":"down"}">${r.pnl>=0?"+":""}${fmt$(r.pnl)}</span>`;
+          return `<tr title="${esc(r.note||"")}"><td>${r.ts!=null?tsg(r.ts,false):"—"}</td><td>${src}</td><td class="oc-mkt">${mkt(r.slug,r.asset,r.dur_s)}</td>` +
+            `<td>${esc(r.side||"")}</td><td>${stZh(r.status)}</td><td>${r.fill_px==null?"—":Number(r.fill_px).toFixed(2)}</td>` +
+            `<td>${r.cost==null?"—":fmt$(r.cost)}</td><td>${pnl}</td></tr>`;
+        }).join("") + `</table></div>`;
+    }
   }
   const vs = (S.strategy||{}).stats || {}, cur = (S.strategy||{}).version;
   const cellV = (v, f) => vs[v] ? f(vs[v]) : "—";
