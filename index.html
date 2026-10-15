@@ -24,6 +24,8 @@ body{background:radial-gradient(1200px 600px at 50% -10%,#0f2233 0%,var(--bg) 60
 #logo span{color:var(--text);font-weight:600;letter-spacing:1px;margin-left:6px}
 .hitem{color:var(--dim)} .hitem b{color:var(--text);margin-left:4px}
 .badge{border:1px solid var(--amber);color:var(--amber);padding:1px 6px;border-radius:3px;font-size:11px}
+a.hnav{color:var(--cyan);border:1px solid var(--cyan);padding:1px 6px;border-radius:3px;font-size:11px;text-decoration:none;letter-spacing:.3px}
+a.hnav:hover{text-decoration:underline}
 #live{margin-left:auto;display:flex;gap:14px;align-items:center}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-right:5px;animation:pulse 1.6s infinite}
 @keyframes pulse{50%{opacity:.35}}
@@ -127,6 +129,7 @@ th:first-child,td:first-child{text-align:left}
     <div id="logo">▚ PAPERBOTS<span>模拟交易大厅</span></div>
     <span class="badge">纯模拟 · 无真钱</span>
     <span class="badge" id="h-strat" style="border-color:var(--cyan);color:var(--cyan)">策略 -</span>
+    <a class="hnav" id="nav-compare" href="compare.html">三系统对比</a>
     <div class="hitem">运行<b id="h-run">-</b></div>
     <div class="hitem">候选<b id="h-cands">-</b></div>
     <div class="hitem">信号<b id="h-sig">-</b></div>
@@ -643,6 +646,14 @@ const _qs = new URLSearchParams(location.search);
 if (_qs.get("k")) try { localStorage.setItem("pb_floor_k", _qs.get("k")); } catch(_){}
 const FLOOR_TOKEN = _qs.get("k") || (function(){ try { return localStorage.getItem("pb_floor_k") || ""; } catch(_){ return ""; } })();
 const FLOOR_API = String(window.FLOOR_API || _qs.get("api") || "").replace(/\/$/, "");
+(function(){
+  const a = $("nav-compare");
+  if (!a) return;
+  const q = new URLSearchParams(location.search);
+  if (!q.get("k") && FLOOR_TOKEN) q.set("k", FLOOR_TOKEN);
+  const s = q.toString();
+  if (s) a.search = "?" + s;
+})();
 function setMode(html){ $("h-mode").innerHTML = html; }
 function stateUrl(){
   const abs = FLOOR_API ? (FLOOR_API + "/api/state") : "api/state";
