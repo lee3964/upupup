@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAPERBOTS · 三系统对比后台</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#070b10; --panel:#0c131c; --panel2:#101a26; --line:#1b2a3a; --text:#c9d6e3; --dim:#6b7f94;
+  --green:#39ff88; --red:#ff4d6a; --amber:#ffcc4d; --cyan:#4dd9ff; --purple:#b77dff; --orange:#ff9d3d;
+  --late:#ffd34d; --maker:#2ee6c5; --live:#ff7a59;
+  --mono:"JetBrains Mono","Noto Sans Mono CJK SC","Noto Sans Mono","DejaVu Sans Mono","PingFang SC","Microsoft YaHei",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px}
+body{background:radial-gradient(1400px 700px at 50% -15%,#12263a 0%,var(--bg) 55%)}
+a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
+#app{max-width:1480px;margin:0 auto;padding:12px 14px 28px;display:flex;flex-direction:column;gap:12px}
+.panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ptitle{font-size:12px;color:var(--dim);letter-spacing:.5px;padding:9px 12px 7px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.ptitle b{color:var(--text);font-weight:700}
+#hdr{display:flex;align-items:center;gap:14px;padding:10px 14px;flex-wrap:wrap}
+#logo{font-weight:800;letter-spacing:1.5px;color:var(--green);text-shadow:0 0 8px rgba(57,255,136,.45)}
+#logo span{color:var(--text);font-weight:600;margin-left:6px;letter-spacing:1px}
+.badge{border:1px solid var(--amber);color:var(--amber);padding:1px 7px;border-radius:3px;font-size:11px}
+.hitem{color:var(--dim)} .hitem b{color:var(--text);margin-left:4px}
+#live{margin-left:auto;display:flex;gap:12px;align-items:center}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-right:5px;animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:1100px){.cards{grid-template-columns:1fr}}
+.card{padding:0;position:relative}
+.card .top{padding:12px 14px 8px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.card .name{font-size:15px;font-weight:800}
+.card .ver{color:var(--dim);font-size:11px;margin-top:3px}
+.card .body{padding:10px 14px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.metric .k{color:var(--dim);font-size:11px} .metric .v{font-size:18px;font-weight:700;margin-top:2px;letter-spacing:.3px}
+.metric.wide{grid-column:1/-1}
+.up{color:var(--green)} .down{color:var(--red)} .muted{color:var(--dim)}
+.pill{display:inline-block;padding:1px 7px;border-radius:3px;border:1px solid;font-size:11px;font-weight:700}
+.pill.ok{color:var(--green);border-color:var(--green)} .pill.stale{color:var(--amber);border-color:var(--amber)}
+.pill.down,.pill.halted{color:var(--red);border-color:var(--red)} .pill.remote_ok{color:var(--cyan);border-color:var(--cyan)}
+.dogbox{margin-top:4px;padding:8px 10px;border:1px dashed var(--line);border-radius:6px;background:rgba(0,0,0,.18);font-size:11.5px;line-height:1.55;grid-column:1/-1}
+.dogbox b{color:var(--text)} .dogbox .row{display:flex;flex-wrap:wrap;gap:10px 16px}
+.accent-late{box-shadow:inset 3px 0 0 var(--late)} .accent-maker{box-shadow:inset 3px 0 0 var(--maker)} .accent-live{box-shadow:inset 3px 0 0 var(--live)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line)}
+.tab{border:1px solid var(--line);background:#0a121b;color:var(--dim);padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px}
+.tab.on{color:var(--text);border-color:var(--cyan);box-shadow:0 0 0 1px rgba(77,217,255,.25) inset}
+.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:12px}
+.filters select,.filters button{background:#0a121b;border:1px solid var(--line);color:var(--text);border-radius:4px;padding:4px 8px;font-family:inherit;font-size:12px}
+.filters button{cursor:pointer} .filters button.on{border-color:var(--amber);color:var(--amber)}
+.scroll{max-height:520px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{color:var(--dim);font-weight:500;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0e1824;z-index:1}
+td{padding:6px 8px;text-align:right;border-bottom:1px solid rgba(27,42,58,.55);vertical-align:top}
+th:first-child,td:first-child,td.left,th.left{text-align:left}
+td.wrap{white-space:normal;line-height:1.35;max-width:280px}
+.src-p{color:var(--late)} .src-m{color:var(--maker)} .src-l{color:var(--live)}
+.hint{color:var(--dim);font-size:11.5px;padding:8px 12px}
+.ev{display:grid;grid-template-columns:64px 88px 1fr;gap:8px;padding:5px 12px;border-bottom:1px dashed rgba(27,42,58,.55);font-size:12px;line-height:1.4}
+.ev .t{color:var(--dim)} .ev .b{font-weight:700} .ev.warn .m{color:var(--amber)} .ev.err .m{color:var(--red)}
+.empty{padding:18px;color:var(--dim);text-align:center}
+.cmp grid, .cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.side{border:1px solid var(--line);border-radius:4px;padding:6px 8px;text-align:left;font-size:11.5px;line-height:1.4;min-height:52px;background:rgba(0,0,0,.15)}
+.side.miss{opacity:.75} .side .st{font-weight:700}
+#pane{min-height:200px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr" class="panel">
+    <div id="logo">▚ PAPERBOTS<span>三系统对比后台</span></div>
+    <span class="badge">尾盘模拟 · 做市模拟 · 尾盘实盘</span>
+    <a href="./">← 返回大厅</a>
+    <div class="hitem">生成<b id="h-gen">-</b></div>
+    <div id="live"><span id="h-mode"><span class="dot"></span>实时 · 每 5 秒</span><span class="hitem">SGT<b id="h-clock">--:--:--</b></span></div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="panel">
+    <div class="ptitle"><b>交易狗 · 进程健康</b><span>pid / 心跳 / ws pm·bn / 同步年龄 / HALT</span></div>
+    <div id="dogs" class="hint">加载中…</div>
+  </div>
+
+  <div class="panel">
+    <div class="tabs" id="tabs">
+      <div class="tab on" data-tab="align">订单对齐（尾盘模拟 vs 实盘）</div>
+      <div class="tab" data-tab="timeline">订单时间线</div>
+      <div class="tab" data-tab="maker">做市明细</div>
+      <div class="tab" data-tab="events">近况事件流</div>
+    </div>
+    <div class="filters" id="filters">
+      <span>筛选系统</span>
+      <button class="on" data-src="all">全部</button>
+      <button data-src="paper">模拟尾盘</button>
+      <button data-src="live">实盘尾盘</button>
+      <button data-src="maker">做市</button>
+      <span id="filter-note"></span>
+    </div>
+    <div id="pane"><div class="empty">加载中…</div></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+"use strict";
+const TZ = "Asia/Singapore";
+const $ = id => document.getElementById(id);
+let S = null, TAB = "align", SRC = "all";
+
+const _qs = new URLSearchParams(location.search);
+if (_qs.get("k")) try { localStorage.setItem("pb_floor_k", _qs.get("k")); } catch(_){}
+const FLOOR_API = String(window.FLOOR_API || _qs.get("api") || "").replace(/\/$/, "");
+const FLOOR_TOKEN = String(window.FLOOR_TOKEN || _qs.get("k") || (function(){ try { return localStorage.getItem("pb_floor_k") || ""; } catch(_){ return ""; } })());
+(function(){
+  const back = document.querySelector('#hdr a[href="./"]');
+  if (!back) return;
+  const q = new URLSearchParams(location.search);
+  if (!q.get("k") && FLOOR_TOKEN) q.set("k", FLOOR_TOKEN);
+  const s = q.toString();
+  if (s) back.search = "?" + s;
+})();
+function stateUrl(){
+  const abs = FLOOR_API ? (FLOOR_API + "/api/state") : "api/state";
+  if (!FLOOR_TOKEN) return abs;
+  const u = new URL(abs, location.href);
+  u.searchParams.set("k", FLOOR_TOKEN);
+  return FLOOR_API ? u.toString() : (u.pathname + u.search);
+}
+
+function fmt$(n, d=2){ if(n==null||isNaN(n)) return "—"; return "$" + Number(n).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmtPct(n){ if(n==null||isNaN(n)) return "—"; return Number(n).toFixed(1) + "%"; }
+function ago(s){ if(s==null||isNaN(s)) return "—"; s=Math.max(0,Math.floor(s)); if(s<60) return s+"秒前"; if(s<3600) return Math.floor(s/60)+"分前"; if(s<86400) return Math.floor(s/3600)+"小时前"; return Math.floor(s/86400)+"天前"; }
+function dur(s){ if(s==null||isNaN(s)) return "—"; s=Math.max(0,Math.floor(s)); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; if(h) return h+"h"+String(m).padStart(2,"0")+"m"; if(m) return m+"m"+String(sec).padStart(2,"0")+"s"; return sec+"s"; }
+function tsg(ts, withDate=true){
+  if(!ts) return "—";
+  const o = {timeZone:TZ, hour12:false, hour:"2-digit", minute:"2-digit", second:"2-digit"};
+  if(withDate) Object.assign(o,{month:"2-digit",day:"2-digit"});
+  return new Date(ts*1000).toLocaleString("zh-CN", o);
+}
+function esc(s){ return String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+function pnlCls(n){ return n==null?"":(n>=0?"up":"down"); }
+function pnlTxt(n){ if(n==null||isNaN(n)) return "—"; return (n>=0?"+":"")+fmt$(n); }
+function stZh(s){ return ({settled:"已结算",open:"持仓",missed:"没吃到",error:"下单异常",active:"报价中",ended:"待结算",archived_v1:"已归档v1",archived_v2:"已归档v2"}[s]||s||"—"); }
+function dogPill(st){ const m={ok:"正常",stale:"心跳偏旧",down:"掉线",halted:"已停",remote_ok:"远端正常"}; return `<span class="pill ${esc(st||"down")}">${esc(m[st]||st||"—")}</span>`; }
+function mkt(slug, asset, dur_s){
+  if(asset && dur_s) return `${String(asset).toUpperCase()} ${dur_s/60}m`;
+  return esc((slug||"").replace(/-updown-/," ").replace(/-\d+$/,""));
+}
+
+function renderCards(){
+  const T = S.triad || {};
+  const items = [
+    {key:"paper_late", accent:"accent-late", color:"var(--late)", fallback:S.late},
+    {key:"paper_maker", accent:"accent-maker", color:"var(--maker)", fallback:S.pm},
+    {key:"live_late", accent:"accent-live", color:"var(--live)", fallback:S.late_live},
+  ];
+  $("cards").innerHTML = items.map(({key,accent,color,fallback}) => {
+    const X = T[key] || fallback;
+    if(!X) return `<div class="panel card ${accent}"><div class="top"><div><div class="name" style="color:${color}">${key}</div><div class="ver">暂无数据</div></div></div><div class="body"><div class="empty">—</div></div></div>`;
+    const dog = X.dog || {};
+    const today = X.today || {};
+    const isMaker = key === "paper_maker";
+    const wr = isMaker ? null : X.win_rate;
+    const todayWr = isMaker ? null : today.win_rate;
+    const title = X.label || key;
+    const ver = X.version || (isMaker ? "maker-v3" : "");
+    return `<div class="panel card ${accent}">
+      <div class="top">
+        <div><div class="name" style="color:${color}">${esc(title)}</div><div class="ver">${esc(ver)} · 预算 ${fmt$(X.budget,0)}</div></div>
+        ${dogPill(dog.status)}
+      </div>
+      <div class="body">
+        <div class="metric"><div class="k">权益</div><div class="v">${fmt$(X.equity)}</div></div>
+        <div class="metric"><div class="k">累计盈亏</div><div class="v ${pnlCls(X.pnl)}">${pnlTxt(X.pnl)}</div></div>
+        <div class="metric"><div class="k">今日盈亏</div><div class="v ${pnlCls(today.pnl)}">${pnlTxt(today.pnl)}${today.n!=null?` <span class="muted" style="font-size:12px">(${today.n}笔)</span>`:""}</div></div>
+        <div class="metric"><div class="k">${isMaker?"今日成交":"胜率(累计/今日)"}</div><div class="v">${isMaker?((today.fills??"—")+` 笔`):`${fmtPct(wr)} / ${fmtPct(todayWr)}`}</div></div>
+        <div class="metric"><div class="k">${isMaker?"开仓盘口":"开仓"}</div><div class="v">${isMaker?(X.open_n??(X.open||[]).length): (X.open??0)}</div></div>
+        <div class="metric"><div class="k">${isMaker?"报价数":"漏单 / 异常"}</div><div class="v">${isMaker?(X.quotes??"—"):`${X.missed??0} / ${X.errors??0}`}</div></div>
+        ${isMaker?`<div class="metric wide"><div class="k">动态仓位</div><div class="v" style="font-size:14px">${X.dyn&&X.dyn.enabled?`权益×${((X.dyn.size_frac||0)*100).toFixed(0)}% → 单笔约 ${fmt$(X.dyn.quote_usd,0)}（上限 ${((X.dyn.size_max_frac||0)*100).toFixed(0)}% / 下限 ${fmt$(X.dyn.size_min_usd,0)}）`:"固定 "+fmt$((X.dyn||{}).max_quote_usd,0)}</div></div>
+        <div class="metric"><div class="k">HALT</div><div class="v" style="font-size:14px">${X.halted?'<span class="down">是</span> '+(X.halt_reason||""):'<span class="up">否</span>'}</div></div>
+        <div class="metric"><div class="k">最差亏损上限</div><div class="v" style="font-size:13px">单盘 ${fmt$((X.dyn||{}).max_worst_loss_per_market_usd,0)} · 合计 ${fmt$((X.dyn||{}).max_worst_loss_total_usd,0)}</div></div>`:""}
+        <div class="dogbox"><b>🐕 交易狗</b>
+          <div class="row" style="margin-top:4px">
+            <span>pid <b>${esc(dog.pid??"—")}</b></span>
+            <span>uptime <b>${dur(dog.uptime_s)}</b></span>
+            <span>心跳 <b>${ago(dog.hb_age)}</b></span>
+            <span>ws pm <b class="${dog.ws_pm==="ok"?"up":"down"}">${esc(dog.ws_pm||"—")}</b> / bn <b class="${dog.ws_bn==="ok"?"up":"down"}">${esc(dog.ws_bn||"—")}</b></span>
+            ${dog.sync_age!=null?`<span>SYNC <b>${ago(dog.sync_age)}</b></span>`:""}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderDogs(){
+  const T = S.triad || {};
+  const rows = [
+    ["模拟·尾盘", T.paper_late],
+    ["模拟·做市", T.paper_maker],
+    ["实盘·尾盘", T.live_late],
+  ];
+  $("dogs").innerHTML = `<div class="scroll" style="max-height:220px"><table>
+    <tr><th class="left">系统</th><th>状态</th><th>pid</th><th>uptime</th><th>心跳年龄</th><th>ws pm</th><th>ws bn</th><th>SYNC</th><th class="left">心跳摘要</th></tr>` +
+    rows.map(([name,X]) => {
+      const d = (X&&X.dog)||{};
+      return `<tr><td class="left">${esc(name)}</td><td>${dogPill(d.status)}</td><td>${esc(d.pid??"—")}</td><td>${dur(d.uptime_s)}</td><td>${ago(d.hb_age)}</td>
+        <td class="${d.ws_pm==="ok"?"up":"down"}">${esc(d.ws_pm||"—")}</td><td class="${d.ws_bn==="ok"?"up":"down"}">${esc(d.ws_bn||"—")}</td>
+        <td>${d.sync_age!=null?ago(d.sync_age):"—"}</td><td class="left wrap">${esc((d.hb_info||"").slice(0,160))}</td></tr>`;
+    }).join("") + `</table></div>`;
+}
+
+function sideCell(r, cls){
+  if(!r) return `<td class="left oc-side muted">—</td>`;
+  const note = r.note ? ` title="${esc(r.note)}"` : "";
+  return `<td class="left wrap"${note}><span class="st ${cls||""}">${esc(stZh(r.status))}</span> ${esc(r.side||"")}
+    ${r.fill_px!=null?` @ ${Number(r.fill_px).toFixed(2)}`:""}
+    ${r.cost!=null?` · ${fmt$(r.cost)}`:""}
+    ${r.pnl!=null?` · <span class="${pnlCls(r.pnl)}">${pnlTxt(r.pnl)}</span>`:""}
+    ${r.edge!=null?` · edge ${(r.edge*100).toFixed(1)}¢`:""}
+  </td>`;
+}
+
+function renderAlign(){
+  const LOC = S.late_order_compare;
+  if(!LOC){ $("pane").innerHTML = `<div class="empty">暂无订单对齐数据</div>`; return; }
+  let rows = LOC.aligned || [];
+  if(SRC==="paper") rows = rows.filter(e => e.paper);
+  if(SRC==="live") rows = rows.filter(e => e.live);
+  if(SRC==="maker"){ $("pane").innerHTML = `<div class="empty">做市无 slug 对齐（请看「做市明细」）</div>`; return; }
+  const nBoth = LOC.n_aligned_both ?? rows.filter(e=>e.paper&&e.live).length;
+  $("filter-note").textContent = `双侧对齐 ${nBoth} · 模拟 ${LOC.n_paper||0} / 实盘 ${LOC.n_live||0}`;
+  $("pane").innerHTML = `<div class="hint">同 slug 并排 · 悬停看备注 · 筛选只影响显示</div>
+    <div class="scroll"><table><tr><th>到期</th><th class="left">市场</th><th class="left" style="color:var(--late)">模拟尾盘</th><th class="left" style="color:var(--live)">实盘尾盘</th></tr>` +
+    rows.map(e => {
+      const t = e.end_ts || (e.paper&&e.paper.ts) || (e.live&&e.live.ts);
+      return `<tr><td>${t?tsg(t,false):"—"}</td><td class="left">${mkt(e.slug,e.asset,e.dur_s)}</td>${sideCell(e.paper,"src-p")}${sideCell(e.live,"src-l")}</tr>`;
+    }).join("") + `</table></div>`;
+}
+
+function renderTimeline(){
+  const LOC = S.late_order_compare || {};
+  let rows = (LOC.timeline || []).slice();
+  const makerFills = ((S.triad||{}).paper_maker || S.pm || {}).recent_fills || [];
+  if(SRC==="paper") rows = rows.filter(r => r.src==="paper");
+  else if(SRC==="live") rows = rows.filter(r => r.src==="live");
+  else if(SRC==="maker"){
+    rows = makerFills.map(r => ({...r, src:"maker", status:"fill", slug:r.market_id, cost: (r.price||0)*(r.size||0), pnl:null}));
+  } else {
+    rows = rows.concat(makerFills.map(r => ({...r, src:"maker", status:"fill", slug:r.market_id, fill_px:r.price, cost:(r.price||0)*(r.size||0)})));
+    rows.sort((a,b)=> (b.ts||0)-(a.ts||0));
+  }
+  $("filter-note").textContent = `共 ${rows.length} 条`;
+  $("pane").innerHTML = `<div class="scroll"><table><tr><th>时间</th><th>来源</th><th class="left">市场</th><th>方向</th><th>状态</th><th>价</th><th>成本/股数</th><th>盈亏</th></tr>` +
+    rows.slice(0,120).map(r => {
+      const src = r.src==="live"?`<span class="src-l">实盘</span>`: r.src==="maker"?`<span class="src-m">做市</span>`:`<span class="src-p">模拟</span>`;
+      return `<tr><td>${tsg(r.ts,false)}</td><td>${src}</td><td class="left">${mkt(r.slug,r.asset,r.dur_s)}</td><td>${esc(r.side||"—")}</td>
+        <td>${esc(stZh(r.status))}</td><td>${r.fill_px!=null?Number(r.fill_px).toFixed(2):(r.price!=null?Number(r.price).toFixed(2):"—")}</td>
+        <td>${r.cost!=null?fmt$(r.cost):(r.size!=null?Number(r.size).toFixed(1)+"股":"—")}</td>
+        <td class="${pnlCls(r.pnl)}">${r.pnl==null?"—":pnlTxt(r.pnl)}</td></tr>`;
+    }).join("") + `</table></div>`;
+}
+
+function renderMaker(){
+  const P = (S.triad||{}).paper_maker || S.pm;
+  if(!P){ $("pane").innerHTML = `<div class="empty">暂无做市数据</div>`; return; }
+  $("filter-note").textContent = `开仓 ${(P.open||[]).length} · 累计成交 ${P.fills||0}`;
+  let html = `<div class="hint">动态仓位 ${P.dyn&&P.dyn.enabled?`开 · 单笔约 ${fmt$(P.dyn.quote_usd)}`:"关"} · HALT ${P.halted?"是":"否"} ${P.halt_reason?("· "+P.halt_reason):""}</div>`;
+  html += `<div class="sect" style="padding:8px 12px;color:var(--dim)">当前盘口</div><div class="scroll" style="max-height:240px"><table>
+    <tr><th class="left">盘口</th><th>剩余</th><th>模型</th><th>中间价</th><th>库存</th><th>估值</th><th>成交笔</th><th>报价数</th></tr>` +
+    (P.open||[]).map(r => {
+      const left = r.end_ts ? Math.max(0, r.end_ts - (S.generated||Date.now()/1000)) : null;
+      return `<tr><td class="left">${esc((r.asset||"").toUpperCase())} ${(r.dur_s||0)/60}m</td><td>${left!=null?dur(left):"—"}</td>
+        <td>${r.last_fair!=null?Number(r.last_fair).toFixed(3):"—"}</td><td>${r.last_mid!=null?Number(r.last_mid).toFixed(3):"—"}</td>
+        <td>${(r.net_shares||0)>=0?"+":""}${Number(r.net_shares||0).toFixed(1)}</td>
+        <td class="${pnlCls(r.mark)}">${pnlTxt(r.mark)}</td><td>${r.n_fills||0}</td><td>${r.n_quotes||0}</td></tr>`;
+    }).join("") + `</table></div>`;
+  html += `<div class="sect" style="padding:8px 12px;color:var(--dim)">最近结算</div><div class="scroll" style="max-height:200px"><table>
+    <tr><th>时间</th><th class="left">市场</th><th>成交笔</th><th>盈亏</th><th>返佣估</th></tr>` +
+    (P.recent||[]).map(r => `<tr><td>${tsg(r.settle_ts,false)}</td><td class="left">${esc(r.slug||"")}</td><td>${r.n_fills||0}</td>
+      <td class="${pnlCls(r.pnl)}">${pnlTxt(r.pnl)}</td><td>${r.rebate_est!=null?fmt$(r.rebate_est):"—"}</td></tr>`).join("") + `</table></div>`;
+  html += `<div class="sect" style="padding:8px 12px;color:var(--dim)">最近成交（fills）</div><div class="scroll" style="max-height:260px"><table>
+    <tr><th>时间</th><th class="left">市场</th><th>方向</th><th>价</th><th>股数</th><th>规则</th><th>fair</th></tr>` +
+    (P.recent_fills||[]).slice(0,40).map(r => `<tr><td>${tsg(r.ts,false)}</td><td class="left">${mkt(r.market_id,r.asset,r.dur_s)}</td>
+      <td>${esc(r.side||"")}</td><td>${r.price!=null?Number(r.price).toFixed(2):"—"}</td><td>${r.size!=null?Number(r.size).toFixed(1):"—"}</td>
+      <td>${esc(r.rule||"")}</td><td>${r.fair!=null?Number(r.fair).toFixed(3):"—"}</td></tr>`).join("") + `</table></div>`;
+  $("pane").innerHTML = html;
+}
+
+function renderEvents(){
+  let ev = (S.triad && S.triad.events) || S.pm_events || [];
+  if(SRC==="paper") ev = ev.filter(e => e.bot==="pm_late" || e.src==="paper_late");
+  if(SRC==="live") ev = ev.filter(e => e.bot==="pm_live" || e.src==="live_late");
+  if(SRC==="maker") ev = ev.filter(e => e.bot==="pm_maker" || e.src==="paper_maker");
+  $("filter-note").textContent = `${ev.length} 条`;
+  $("pane").innerHTML = `<div class="scroll">` + (ev.length? ev.map(e => {
+    const cls = (e.level==="ERROR"||e.kind==="error")?"err": ((e.level==="WARN"||e.kind==="missed"||e.kind==="halt")?"warn":"");
+    const bot = e.bot==="pm_live"?"实盘": e.bot==="pm_maker"?"做市": e.bot==="pm_late"?"尾盘":e.bot;
+    return `<div class="ev ${cls}"><div class="t">${tsg(e.ts,false)}</div><div class="b">${esc(bot)}</div><div class="m">${esc(e.message||"")}</div></div>`;
+  }).join("") : `<div class="empty">暂无事件</div>`) + `</div>`;
+}
+
+function renderPane(){
+  if(TAB==="align") renderAlign();
+  else if(TAB==="timeline") renderTimeline();
+  else if(TAB==="maker") renderMaker();
+  else renderEvents();
+}
+
+function render(){
+  if(!S) return;
+  $("h-gen").textContent = tsg(S.generated, true);
+  renderCards(); renderDogs(); renderPane();
+}
+
+document.querySelectorAll("#tabs .tab").forEach(el => el.onclick = () => {
+  TAB = el.dataset.tab; document.querySelectorAll("#tabs .tab").forEach(x => x.classList.toggle("on", x===el)); renderPane();
+});
+document.querySelectorAll("#filters button").forEach(el => el.onclick = () => {
+  SRC = el.dataset.src; document.querySelectorAll("#filters button").forEach(x => x.classList.toggle("on", x===el)); renderPane();
+});
+
+let FAILS=0;
+async function poll(){
+  try{
+    if (FLOOR_API && !FLOOR_TOKEN) {
+      $("h-mode").innerHTML = `<span style="color:var(--red)">■ 缺少访问令牌：请用 ?k=你的令牌 打开一次</span>`;
+      return;
+    }
+    const r = await fetch(stateUrl(), {credentials: FLOOR_API ? "omit" : "same-origin", cache:"no-store"});
+    if (r.status === 403) {
+      FAILS++;
+      $("h-mode").innerHTML = `<span style="color:var(--red)">■ 访问令牌失效，请用带 ?k= 的链接重新打开</span>`;
+      return;
+    }
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    S = await r.json(); FAILS=0; render();
+    $("h-mode").innerHTML = `<span class="dot"></span>实时 · 每 5 秒` + (FLOOR_API?" · 远程":"");
+  }catch(e){
+    FAILS++; $("h-mode").innerHTML = `<span style="color:var(--red)">■ 刷新失败 ${esc(e.message||e)}</span>`;
+    if(FAILS>=6) location.reload();
+  }
+}
+function tick(){ $("h-clock").textContent = new Date().toLocaleString("zh-CN",{timeZone:TZ,hour12:false,hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
+poll(); setInterval(poll, 5000); setInterval(tick, 250); tick();
+</script>
+</body>
+</html>
