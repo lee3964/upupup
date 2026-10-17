@@ -1,6 +1,6 @@
 # 模拟盘大厅（实时）
 
-GitHub Pages 只托管前端；数据来自实时后台（命名 Cloudflare 隧道 `https://api.lee3964.xyz` → paperbots `/api/state`）。
+GitHub Pages 只托管前端；数据来自实时后台（命名 Cloudflare 隧道 `https://api.kinglee.si` → paperbots `/api/state`）。旧主机名 `https://api.lee3964.xyz` 仍可作为备份，直到确认新域名稳定。
 
 ## 打开方式
 
@@ -10,6 +10,6 @@ GitHub Pages 只托管前端；数据来自实时后台（命名 Cloudflare 隧�
 
 访问令牌在运行环境的 `paperbots/data/web_token.txt`，**不要**提交到本仓库。
 
-`config.js` 里的 `FLOOR_API` 固定为命名 Cloudflare 隧道 `https://api.lee3964.xyz`。大厅和三系统对比都读取这个地址。
+`config.js` 里的 `FLOOR_API` 固定为命名 Cloudflare 隧道 `https://api.kinglee.si`。大厅和四系统对比都读取这个地址。
 
 令牌会写入浏览器 localStorage（`pb_floor_k`），下次可省略 `?k=`。
