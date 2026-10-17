@@ -582,7 +582,8 @@ function renderPos(){
       const status = stZh(o.status);
       const flag = PBCompare.isFilled(o) ? "成交" : "";
       const head = flag && flag !== status ? `${flag} · ${status}` : status;
-      return `<td class="oc-side" title="${note}${edge}"><b>${esc(o.side||"")}</b> · ${esc(head)}` +
+      const ver = o.version ? `<br><span style="color:#6b7f94">${esc(o.version)}</span>` : "";
+      return `<td class="oc-side" title="${note}${edge}"><b>${esc(o.side||"")}</b> · ${esc(head)}${ver}` +
         `<br>${px}${size ? " · "+size : ""}${cost ? " · "+cost : ""}${pnlHtml ? " · "+pnlHtml : ""}` +
         `${note ? `<br><span style="color:#6b7f94">${note.length>28?note.slice(0,28)+"…":note}</span>` : ""}</td>`;
     };
@@ -602,8 +603,9 @@ function renderPos(){
         hs += `<div class="sect" style="color:#c9d6e3">订单时间线（按触发时间 · 60|120|实盘）</div>` +
           `<div class="oc-scroll" style="max-height:220px"><table><tr><th>时间</th><th>来源</th><th>市场</th><th>方向</th><th>状态</th><th>成交价</th><th>成本</th><th>盈亏</th></tr>` +
           tl.map(r => {
-            const kind = PBCompare.srcKind(r.src);
-            const src = kind === "live" ? `<span class="oc-src-l">实盘</span>` : kind === "paper120" ? `<span class="oc-src-p120">模拟120</span>` : `<span class="oc-src-p">模拟60</span>`;
+            const d = PBCompare.describeSrc(r);
+            const cls = d.kind === "live" ? "oc-src-l" : d.kind === "paper120" ? "oc-src-p120" : d.kind === "paper" ? "oc-src-p" : "";
+            const src = `<span class="${cls}">${esc(d.text || "—")}</span>`;
             const pnl = r.pnl == null ? "—" : `<span class="${r.pnl>=0?"up":"down"}">${r.pnl>=0?"+":""}${fmt$(r.pnl)}</span>`;
             return `<tr title="${esc(r.note||"")}"><td>${r.ts!=null?tsg(r.ts,false):"—"}</td><td>${src}</td><td class="oc-mkt">${mkt(r.slug,r.asset,r.dur_s)}</td>` +
               `<td>${esc(r.side||"")}</td><td>${stZh(r.status)}</td><td>${r.fill_px==null?"—":Number(r.fill_px).toFixed(2)}</td>` +
@@ -641,7 +643,10 @@ function renderPos(){
       hs += `<div class="sect" style="color:#c9d6e3">订单时间线（按触发时间 · paper|live）</div>` +
         `<div class="oc-scroll" style="max-height:220px"><table><tr><th>时间</th><th>来源</th><th>市场</th><th>方向</th><th>状态</th><th>成交价</th><th>成本</th><th>盈亏</th></tr>` +
         LOC.timeline.map(r => {
-          const src = r.src === "live" ? `<span class="oc-src-l">实盘</span>` : `<span class="oc-src-p">模拟</span>`;
+          const d = window.PBCompare ? PBCompare.describeSrc(r) : null;
+          const src = d
+            ? `<span class="${d.kind === "live" ? "oc-src-l" : d.kind === "paper120" ? "oc-src-p120" : d.kind === "paper" ? "oc-src-p" : ""}">${esc(d.text || "—")}</span>`
+            : (r.src === "live" ? `<span class="oc-src-l">实盘</span>` : `<span class="oc-src-p">${esc(r.version || r.src || "模拟")}</span>`);
           const pnl = r.pnl == null ? "—" : `<span class="${r.pnl>=0?"up":"down"}">${r.pnl>=0?"+":""}${fmt$(r.pnl)}</span>`;
           return `<tr title="${esc(r.note||"")}"><td>${r.ts!=null?tsg(r.ts,false):"—"}</td><td>${src}</td><td class="oc-mkt">${mkt(r.slug,r.asset,r.dur_s)}</td>` +
             `<td>${esc(r.side||"")}</td><td>${stZh(r.status)}</td><td>${r.fill_px==null?"—":Number(r.fill_px).toFixed(2)}</td>` +
