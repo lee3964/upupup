@@ -241,7 +241,8 @@ function sideCell(r, cls){
   const status = stZh(r.status);
   const flag = filled ? "成交" : (r.status === "missed" ? "没吃到" : "");
   const head = flag && flag !== status ? `${flag} · ${status}` : status;
-  return `<td class="left wrap"${note}><span class="st ${cls||""}">${esc(head)}</span> ${esc(r.side||"")}
+  const ver = r.version ? ` <span class="muted">${esc(r.version)}</span>` : "";
+  return `<td class="left wrap"${note}><span class="st ${cls||""}">${esc(head)}</span>${ver} ${esc(r.side||"")}
     ${r.fill_px!=null?` @ ${Number(r.fill_px).toFixed(2)}`:""}
     ${size}
     ${r.cost!=null?` · ${fmt$(r.cost)}`:""}
@@ -302,21 +303,20 @@ function renderAlign120(){
   });
 }
 
-function srcLabel(src){
-  const kind = window.PBCompare ? PBCompare.srcKind(src) : src;
-  if(kind === "live") return `<span class="src-l">实盘</span>`;
-  if(kind === "maker") return `<span class="src-m">做市</span>`;
-  if(kind === "paper120") return `<span class="src-p120">模拟120</span>`;
-  if(kind === "paper") return `<span class="src-p">模拟60</span>`;
-  return esc(src || "—");
+function srcLabel(row){
+  const d = window.PBCompare && PBCompare.describeSrc ? PBCompare.describeSrc(row) : null;
+  if(!d || !d.text) return esc(typeof row === "string" ? row : (row && row.src) || "—");
+  const cls = d.kind === "live" ? "src-l" : d.kind === "maker" ? "src-m" : d.kind === "paper120" ? "src-p120" : d.kind === "paper" ? "src-p" : "";
+  return `<span class="${cls}">${esc(d.text)}</span>`;
 }
 
 function renderTimeline(){
   let rows = window.PBCompare ? PBCompare.mergedTimeline(S).slice() : ((S.late_order_compare || {}).timeline || []).slice();
   const makerFills = ((S.triad||{}).paper_maker || S.pm || {}).recent_fills || [];
-  if(SRC === "paper") rows = rows.filter(r => (window.PBCompare ? PBCompare.srcKind(r.src) : r.src) === "paper");
-  else if(SRC === "paper120") rows = rows.filter(r => (window.PBCompare ? PBCompare.srcKind(r.src) : r.src) === "paper120");
-  else if(SRC === "live") rows = rows.filter(r => (window.PBCompare ? PBCompare.srcKind(r.src) : r.src) === "live");
+  const kindOfRow = r => window.PBCompare ? (PBCompare.rowKind(r) || PBCompare.srcKind(r.src)) : r.src;
+  if(SRC === "paper") rows = rows.filter(r => kindOfRow(r) === "paper");
+  else if(SRC === "paper120") rows = rows.filter(r => kindOfRow(r) === "paper120");
+  else if(SRC === "live") rows = rows.filter(r => kindOfRow(r) === "live");
   else if(SRC === "maker"){
     rows = makerFills.map(r => ({...r, src:"maker", status:"fill", slug:r.market_id, cost: (r.price||0)*(r.size||0), pnl:null}));
   } else {
@@ -326,7 +326,7 @@ function renderTimeline(){
   $("filter-note").textContent = `共 ${rows.length} 条`;
   $("pane").innerHTML = `<div class="scroll"><table><tr><th>时间</th><th>来源</th><th class="left">市场</th><th>方向</th><th>状态</th><th>价</th><th>成本/股数</th><th>盈亏</th></tr>` +
     rows.slice(0,160).map(r => {
-      return `<tr><td>${tsg(r.ts,false)}</td><td>${srcLabel(r.src)}</td><td class="left">${mkt(r.slug,r.asset,r.dur_s)}</td><td>${esc(r.side||"—")}</td>
+      return `<tr><td>${tsg(r.ts,false)}</td><td>${srcLabel(r)}</td><td class="left">${mkt(r.slug,r.asset,r.dur_s)}</td><td>${esc(r.side||"—")}</td>
         <td>${esc(stZh(r.status))}</td><td>${r.fill_px!=null?Number(r.fill_px).toFixed(2):(r.price!=null?Number(r.price).toFixed(2):"—")}</td>
         <td>${r.cost!=null?fmt$(r.cost):(r.size!=null?Number(r.size).toFixed(1)+"股":"—")}</td>
         <td class="${pnlCls(r.pnl)}">${r.pnl==null?"—":pnlTxt(r.pnl)}</td></tr>`;
@@ -367,7 +367,8 @@ function renderEvents(){
   $("pane").innerHTML = `<div class="scroll">` + (ev.length? ev.map(e => {
     const cls = (e.level==="ERROR"||e.kind==="error")?"err": ((e.level==="WARN"||e.kind==="missed"||e.kind==="halt")?"warn":"");
     const kind = kindOf(e);
-    const bot = kind==="live"?"实盘": kind==="maker"?"做市": kind==="paper120"?"尾盘120": kind==="paper"?"尾盘60": (e.bot||"");
+    const described = window.PBCompare && PBCompare.describeSrc ? PBCompare.describeSrc(e) : null;
+    const bot = described && described.text ? described.text : (kind==="live"?"实盘": kind==="maker"?"做市": kind==="paper120"?"尾盘120": kind==="paper"?"尾盘60": (e.bot||""));
     return `<div class="ev ${cls}"><div class="t">${tsg(e.ts,false)}</div><div class="b">${esc(bot)}</div><div class="m">${esc(e.message||"")}</div></div>`;
   }).join("") : `<div class="empty">暂无事件</div>`) + `</div>`;
 }

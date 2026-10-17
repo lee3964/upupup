@@ -129,9 +129,14 @@ test("missing late120 does not drop paper or live rows", () => {
   assert.equal(view.count.live >= 1, true);
   assert.equal(view.rows.some(r => r.slug === "btc-updown-5m-1" && r.paper && r.live), true);
   const tl = PB.mergedTimeline(state);
-  assert.equal(tl.some(r => r.src === "paper120"), false);
-  assert.equal(tl.some(r => r.src === "paper"), true);
-  assert.equal(tl.some(r => r.src === "live"), true);
+  assert.equal(tl.some(r => PB.srcKind(r.src) === "paper120"), false);
+  assert.equal(tl.some(r => PB.srcKind(r.src) === "paper"), true);
+  assert.equal(tl.some(r => PB.srcKind(r.src) === "live"), true);
+  const paperRow = tl.find(r => PB.srcKind(r.src) === "paper");
+  assert.match(paperRow.src, /late-v4/);
+  assert.equal(paperRow.src.includes("120"), false);
+  assert.equal(PB.describeSrc(paperRow).text.includes("尾盘60"), true);
+  assert.equal(PB.describeSrc(paperRow).text.includes("尾盘120"), false);
 });
 
 test("timeline and aligned paper120 fields are picked up without recent", () => {
@@ -152,7 +157,10 @@ test("timeline and aligned paper120 fields are picked up without recent", () => 
   assert.ok(sol && sol.paper120 && !sol.paper);
   assert.equal(sol.paper120.status, "missed");
   const tl = PB.mergedTimeline(state);
-  assert.equal(tl.filter(r => r.src === "paper120").length >= 1, true);
+  assert.equal(tl.filter(r => PB.srcKind(r.src) === "paper120").length >= 1, true);
+  const solTl = tl.find(r => r.slug === "sol-updown-5m-9");
+  assert.equal(PB.srcKind(solTl.src), "paper120");
+  assert.equal(PB.describeSrc(solTl).text.startsWith("尾盘120"), true);
 });
 
 test("sysNode merges triad card fields with late120 recent and derives win rate", () => {
@@ -174,6 +182,102 @@ test("sysNode merges triad card fields with late120 recent and derives win rate"
   const maker = PB.sysNode(state, "paper_maker");
   assert.equal(PB.todayOpens(maker.today), 6);
   assert.equal(PB.kpiOf(node).equity, 1100);
+});
+
+test("merged late-v% paper column keeps late-v4-120 out of 60-10", () => {
+  const state = sample(false);
+  state.late.recent = [];
+  state.late.pnl = 0;
+  state.late.n = 0;
+  state.late120 = {
+    version: "late-v4-120",
+    equity: 1000,
+    pnl: 1,
+    n: 1,
+    wins: 1,
+    recent: [],
+  };
+  state.triad.paper_late120 = { version: "late-v4-120", equity: 1000, pnl: 1, today: { pnl: 1, opens: 1 } };
+  state.late_order_compare.aligned.push({
+    slug: "sol-updown-5m-9",
+    asset: "sol",
+    dur_s: 300,
+    end_ts: 530,
+    paper: { side: "UP", status: "settled", fill_px: 0.61, size: 5, pnl: 1, version: "late-v4-120" },
+    live: { side: "UP", status: "missed", version: "live-late-v1" },
+  });
+  state.late_order_compare.aligned.push({
+    slug: "btc-updown-5m-1",
+    asset: "btc",
+    dur_s: 300,
+    end_ts: 130,
+    paper: { side: "DOWN", status: "settled", fill_px: 0.2, pnl: 0.1, tag: "archived-late-v4" },
+  });
+  state.late_order_compare.timeline = [
+    { src: "paper", version: "late-v4-120", slug: "sol-updown-5m-9", asset: "sol", dur_s: 300, ts: 500, end_ts: 530, side: "UP", status: "settled", fill_px: 0.61, pnl: 1 },
+    { src: "paper", version: "late-v4", slug: "eth-updown-5m-2", asset: "eth", dur_s: 300, ts: 200, end_ts: 230, side: "DOWN", status: "missed" },
+    { src: "paper", tag: "archived-late-v4-120", slug: "doge-updown-5m-4", asset: "doge", dur_s: 300, ts: 600, end_ts: 630, side: "UP", status: "open", fill_px: 0.44 },
+  ];
+  const view = PB.align(state, ["paper", "paper120", "live"]);
+  const sol = view.rows.find(r => r.slug === "sol-updown-5m-9");
+  assert.ok(sol && sol.paper120 && !sol.paper);
+  assert.equal(sol.paper120.version, "late-v4-120");
+  assert.equal(sol.live.status, "missed");
+  const eth = view.rows.find(r => r.slug === "eth-updown-5m-2");
+  assert.ok(eth && eth.paper && !eth.paper120);
+  assert.equal(eth.paper.version, "late-v4");
+  const doge = view.rows.find(r => r.slug === "doge-updown-5m-4");
+  assert.ok(doge && doge.paper120 && !doge.paper);
+  const btc = view.rows.find(r => r.slug === "btc-updown-5m-1");
+  assert.equal(btc.paper.tag, "archived-late-v4");
+  assert.equal(btc.paper120, null);
+  assert.equal(view.count.paper120 >= 2, true);
+  const tl = PB.mergedTimeline(state);
+  const solTl = tl.find(r => r.slug === "sol-updown-5m-9");
+  assert.equal(PB.srcKind(solTl.src), "paper120");
+  assert.match(solTl.src, /late-v4-120/);
+  const label = PB.describeSrc(solTl);
+  assert.equal(label.kind, "paper120");
+  assert.equal(label.text.includes("尾盘120"), true);
+  assert.equal(label.text.includes("尾盘60"), false);
+  const ethTl = tl.find(r => r.slug === "eth-updown-5m-2");
+  assert.equal(PB.srcKind(ethTl.src), "paper");
+  assert.match(ethTl.src, /late-v4/);
+  assert.equal(ethTl.src.includes("120"), false);
+  assert.equal(PB.describeSrc({ src: "paper", version: "late-v4-120" }).text.startsWith("尾盘120"), true);
+  assert.equal(PB.rowKind({ src: "paper", version: "archived-late-v4-120" }), "paper120");
+  assert.equal(PB.rowKind({ src: "paper", tag: "archived-late-v4" }), "paper");
+});
+
+test("fill that exists only on late120 is not shown under 60 even without a version field", () => {
+  const state = sample(false);
+  state.late.recent = [];
+  state.late120 = {
+    version: "late-v4-120",
+    recent: [
+      { slug: "sol-updown-5m-9", asset: "sol", dur_s: 300, ts: 500, end_ts: 530, side: "UP", status: "settled", fill_px: 0.61, size: 5, pnl: 1 },
+    ],
+  };
+  state.triad.paper_late120 = { version: "late-v4-120", equity: 1000, pnl: 1 };
+  state.late_order_compare.aligned.push({
+    slug: "sol-updown-5m-9",
+    asset: "sol",
+    dur_s: 300,
+    end_ts: 530,
+    paper: { side: "UP", status: "settled", fill_px: 0.61, size: 5, pnl: 1 },
+    live: null,
+  });
+  state.late_order_compare.timeline.push({
+    src: "paper", slug: "sol-updown-5m-9", asset: "sol", dur_s: 300, ts: 500, end_ts: 530, side: "UP", status: "settled", fill_px: 0.61, pnl: 1,
+  });
+  const view = PB.align(state, ["paper", "paper120", "live"]);
+  const sol = view.rows.find(r => r.slug === "sol-updown-5m-9");
+  assert.ok(sol && sol.paper120 && !sol.paper);
+  assert.equal(sol.paper120.version, "late-v4-120");
+  const tl = PB.mergedTimeline(state).find(r => r.slug === "sol-updown-5m-9");
+  assert.equal(PB.srcKind(tl.src), "paper120");
+  assert.match(tl.src, /late-v4-120/);
+  assert.equal(PB.describeSrc(tl).text.includes("尾盘60"), false);
 });
 
 test("empty state does not throw", () => {

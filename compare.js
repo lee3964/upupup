@@ -20,19 +20,71 @@
     return out;
   }
 
+  // 120 is checked before "late" / "live" so late-v4-120 and archived-late-v4-120
+  // are not swallowed by the 60-minute book. A bare "paper" / "late" tag is 60.
   function srcKind(src) {
     const s = String(src || "").toLowerCase();
     if (!s) return "";
     if (s.includes("maker")) return "maker";
-    if (s === "live" || s.includes("live")) return "live";
     if (s.includes("120")) return "paper120";
-    if (s === "paper" || s.includes("late") || s === "pm_late") return "paper";
+    if (s === "live" || s.includes("live")) return "live";
+    if (s === "paper" || s.includes("late") || s === "pm_late" || s.includes("archived") || s.includes("60-10") || s.includes("60_10") || s.startsWith("paper:")) return "paper";
     return s;
+  }
+
+  function versionBlob(r) {
+    if (!isObj(r)) return "";
+    return [r.version, r.ver, r.strategy_version, r.tag, r.archived_tag, r.paper_version]
+      .filter(v => v != null && String(v).trim() !== "")
+      .join(" ");
+  }
+
+  function versionFromSrc(src) {
+    const s = String(src || "");
+    const i = s.indexOf(":");
+    return i < 0 ? "" : s.slice(i + 1).trim();
+  }
+
+  function displayVersion(r) {
+    if (!isObj(r)) return versionFromSrc(r);
+    return String(r.version || r.ver || r.strategy_version || r.tag || r.archived_tag || versionFromSrc(r.src) || "");
+  }
+
+  // Version / archived tag wins over a generic src:"paper". Otherwise every
+  // late-v% row the floor API stuffed into one paper column is labeled 尾盘60.
+  function rowKind(r) {
+    if (r == null || r === "") return "";
+    if (typeof r === "string") return srcKind(r);
+    const v = versionBlob(r).toLowerCase();
+    if (v.includes("maker")) return "maker";
+    if (v.includes("120")) return "paper120";
+    if (v.includes("live")) return "live";
+    if (v.includes("late") || v.includes("archived") || v.includes("60-10") || v.includes("60_10")) return "paper";
+    return srcKind(r.src || r.bot || "");
+  }
+
+  function srcTag(kind, version) {
+    const v = String(version || "").trim();
+    if (!kind) return v;
+    return v ? (kind + ":" + v) : kind;
+  }
+
+  function describeSrc(row) {
+    const o = typeof row === "string" ? { src: row } : (row || {});
+    const kind = rowKind(o) || srcKind(o.src);
+    const version = displayVersion(o);
+    let text = "";
+    if (kind === "live") text = version ? ("实盘 " + version) : "实盘";
+    else if (kind === "maker") text = version ? ("做市 " + version) : "做市";
+    else if (kind === "paper120") text = version ? ("尾盘120 " + version) : "尾盘120";
+    else if (kind === "paper") text = version ? ("尾盘60 " + version) : "尾盘60";
+    else text = version || String(o.src || o.bot || "");
+    return { kind: kind, version: version, text: text };
   }
 
   function eventKind(e) {
     if (!e) return "";
-    return srcKind(`${e.bot || ""} ${e.src || ""}`);
+    return rowKind(e) || srcKind(`${e.bot || ""} ${e.src || ""}`);
   }
 
   function num(v) {
@@ -67,6 +119,9 @@
       pnl: num(r.pnl),
       edge: num(r.edge),
       note: r.note || "",
+      version: String(r.version || r.ver || r.strategy_version || parent.version || ""),
+      tag: String(r.tag || r.archived_tag || parent.tag || ""),
+      src: String(r.src || parent.src || ""),
     };
     if (!o.slug && parent._key) o._key = parent._key;
     return o;
@@ -101,7 +156,7 @@
     const primary = sb > sa ? b : (sb < sa ? a : ((b.ts || 0) >= (a.ts || 0) ? b : a));
     const secondary = primary === a ? b : a;
     const out = Object.assign({}, secondary, primary);
-    for (const k of ["side", "status", "note", "slug", "asset"]) {
+    for (const k of ["side", "status", "note", "slug", "asset", "version", "tag", "src"]) {
       if ((out[k] == null || out[k] === "") && secondary[k]) out[k] = secondary[k];
     }
     for (const k of ["fill_px", "size", "cost", "pnl", "edge", "ts", "end_ts", "dur_s"]) {
@@ -122,11 +177,53 @@
   function ordersFromSys(sys) {
     const bucket = [];
     if (!isObj(sys)) return bucket;
-    for (const k of ["recent", "orders", "trades", "history"]) pushList(bucket, sys[k]);
+    const inherited = { version: sys.version || "", tag: sys.tag || sys.archived_tag || "" };
+    for (const k of ["recent", "orders", "trades", "history"]) pushList(bucket, sys[k], inherited);
     if (isObj(sys.today)) {
-      for (const k of ["recent", "orders", "trades"]) pushList(bucket, sys.today[k]);
+      for (const k of ["recent", "orders", "trades"]) pushList(bucket, sys.today[k], inherited);
     }
     return bucket;
+  }
+
+  function fillKey(o) {
+    if (!o || !o.slug) return "";
+    const px = o.fill_px == null ? "" : String(o.fill_px);
+    return o.slug + "|" + (o.side || "") + "|" + px;
+  }
+
+  function bookIndex(list) {
+    const slugs = new Set();
+    const fills = new Set();
+    for (let i = 0; i < list.length; i++) {
+      const o = list[i];
+      if (o && o.slug) slugs.add(o.slug);
+      const k = fillKey(o);
+      if (k) fills.add(k);
+    }
+    return { slugs: slugs, fills: fills };
+  }
+
+  // Generic src:"paper" (the merged late-v% column) is 60 only when this fill
+  // is not exclusively on the late-v4-120 book.
+  function unversionedPaperSide(o, sets) {
+    if (!sets || !o || !o.slug) return "paper";
+    const in60 = sets.k60.slugs.has(o.slug);
+    const in120 = sets.k120.slugs.has(o.slug);
+    if (in120 && !in60) return "paper120";
+    if (in60 && !in120) return "paper";
+    const k = fillKey(o);
+    if (k && sets.k120.fills.has(k) && !sets.k60.fills.has(k)) return "paper120";
+    return "paper";
+  }
+
+  function sideOf(raw, o, fallback, sets) {
+    const probe = Object.assign({}, isObj(raw) ? raw : {}, o || {});
+    let kind = rowKind(probe);
+    if (kind === "maker") return "";
+    if (!kind) kind = fallback || "";
+    if (sets && kind === "paper" && !versionBlob(probe)) kind = unversionedPaperSide(o, sets);
+    if (kind === "paper" || kind === "paper120" || kind === "live") return kind;
+    return fallback || "";
   }
 
   function cell120(e) {
@@ -134,10 +231,35 @@
     return e.paper120 || e.late120 || e.paper_late120 || e.p120 || null;
   }
 
+  function pushSide(paper, paper120, live, kind, o) {
+    if (!o || !kind) return;
+    if (kind === "paper") paper.push(o);
+    else if (kind === "paper120") paper120.push(o);
+    else if (kind === "live") live.push(o);
+  }
+
+  function absorb(paper, paper120, live, raw, inherited, fallback, sets) {
+    const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+    for (let i = 0; i < list.length; i++) {
+      const o = normOrder(list[i], inherited);
+      if (!o || !rowKey(o)) continue;
+      pushSide(paper, paper120, live, sideOf(list[i], o, fallback, sets), o);
+    }
+  }
+
   function collect(state) {
     const S = state || {};
     const T = isObj(S.triad) ? S.triad : {};
     const paper = [], paper120 = [], live = [];
+    // Distinct books already exposed by the floor API. Per-row version still
+    // wins, so a late-v4-120 fill nested under `late` cannot land in 60-10.
+    absorb(paper, paper120, live, ordersFromSys(S.late), null, "paper", null);
+    absorb(paper, paper120, live, ordersFromSys(T.paper_late), null, "paper", null);
+    absorb(paper, paper120, live, ordersFromSys(S.late120), null, "paper120", null);
+    absorb(paper, paper120, live, ordersFromSys(T.paper_late120), null, "paper120", null);
+    absorb(paper, paper120, live, ordersFromSys(S.late_live), null, "live", null);
+    absorb(paper, paper120, live, ordersFromSys(T.live_late), null, "live", null);
+    const sets = { k60: bookIndex(paper), k120: bookIndex(paper120) };
     const LOC = isObj(S.late_order_compare) ? S.late_order_compare : {};
     const aligned = Array.isArray(LOC.aligned) ? LOC.aligned : [];
     for (let i = 0; i < aligned.length; i++) {
@@ -150,26 +272,20 @@
         end_ts: e.end_ts,
         _key: e.slug ? "" : ("row:" + i),
       };
-      if (e.paper) pushList(paper, [e.paper], inherited);
-      if (e.live) pushList(live, [e.live], inherited);
+      // `paper` is the merged late-v% column. Route each row by its own version
+      // (late-v4 vs late-v4-120 / archived tag), not into 60 by default.
+      if (e.paper) absorb(paper, paper120, live, e.paper, inherited, "paper", sets);
+      if (e.live) absorb(paper, paper120, live, e.live, inherited, "live", sets);
       const p120 = cell120(e);
-      if (p120) pushList(paper120, [p120], inherited);
+      if (p120) absorb(paper, paper120, live, p120, inherited, "paper120", sets);
     }
     const timeline = Array.isArray(LOC.timeline) ? LOC.timeline : [];
-    for (const r of timeline) {
-      const kind = srcKind(r && r.src);
-      const o = normOrder(r);
-      if (!o || !rowKey(o)) continue;
-      if (kind === "paper") paper.push(o);
-      else if (kind === "paper120") paper120.push(o);
-      else if (kind === "live") live.push(o);
+    for (let i = 0; i < timeline.length; i++) {
+      const r = timeline[i];
+      const hinted = rowKind(r) || srcKind(r && r.src);
+      const fallback = hinted === "paper" || hinted === "paper120" || hinted === "live" ? hinted : "";
+      absorb(paper, paper120, live, r, null, fallback, sets);
     }
-    paper.push.apply(paper, ordersFromSys(S.late));
-    paper.push.apply(paper, ordersFromSys(T.paper_late));
-    paper120.push.apply(paper120, ordersFromSys(S.late120));
-    paper120.push.apply(paper120, ordersFromSys(T.paper_late120));
-    live.push.apply(live, ordersFromSys(S.late_live));
-    live.push.apply(live, ordersFromSys(T.live_late));
     return { paper: paper, paper120: paper120, live: live };
   }
 
@@ -248,8 +364,10 @@
     const T = isObj(S.triad) ? S.triad : {};
     if (S.late120 || T.paper_late120) return true;
     const LOC = isObj(S.late_order_compare) ? S.late_order_compare : {};
-    if ((LOC.aligned || []).some(e => e && (e.paper120 || e.late120 || e.paper_late120 || e.p120))) return true;
-    if ((LOC.timeline || []).some(r => srcKind(r && r.src) === "paper120")) return true;
+    if ((LOC.aligned || []).some(e => e && (e.paper120 || e.late120 || e.paper_late120 || e.p120 || rowKind(e.paper) === "paper120"))) return true;
+    if ((LOC.timeline || []).some(r => rowKind(r) === "paper120")) return true;
+    if (ordersFromSys(S.late).some(o => rowKind(o) === "paper120")) return true;
+    if (ordersFromSys(T.paper_late).some(o => rowKind(o) === "paper120")) return true;
     return false;
   }
 
@@ -258,23 +376,51 @@
     const LOC = isObj(S.late_order_compare) ? S.late_order_compare : {};
     const T = isObj(S.triad) ? S.triad : {};
     const rows = [];
-    const seen = new Set();
-    function add(r, src) {
+    const seen = new Map();
+    const bags = collect(S);
+    const sets = { k60: bookIndex(bags.paper), k120: bookIndex(bags.paper120) };
+    function bookVersion(o, kind) {
+      const list = kind === "paper120" ? bags.paper120 : kind === "live" ? bags.live : kind === "paper" ? bags.paper : [];
+      const k = fillKey(o);
+      let slugVer = "";
+      for (let i = 0; i < list.length; i++) {
+        const v = displayVersion(list[i]);
+        if (!v) continue;
+        if (k && fillKey(list[i]) === k) return v;
+        if (o.slug && list[i].slug === o.slug) slugVer = slugVer && slugVer !== v ? "" : (slugVer || v);
+      }
+      return slugVer;
+    }
+    function add(r, hint) {
       const o = normOrder(r);
       if (!o) return;
-      const kind = src || srcKind(r && r.src) || "";
+      let kind = rowKind(Object.assign({}, isObj(r) ? r : {}, o)) || hint || "";
+      if (kind === "paper" && !versionBlob(o) && !versionBlob(r)) kind = unversionedPaperSide(o, sets);
       if (!kind || kind === "maker") return;
+      const ver = displayVersion(o) || displayVersion(r) || bookVersion(o, kind);
+      const tag = srcTag(kind, ver);
       const id = [kind, o.slug, o.ts, o.side, o.status, o.fill_px].join("|");
-      if (seen.has(id)) return;
-      seen.add(id);
-      const copy = Object.assign({}, o, { src: kind });
-      rows.push(copy);
+      if (seen.has(id)) {
+        const prev = rows[seen.get(id)];
+        if (prev && !prev.version && ver) {
+          prev.version = ver;
+          prev.src = tag;
+        }
+        return;
+      }
+      seen.set(id, rows.length);
+      rows.push(Object.assign({}, o, { src: tag, version: ver || o.version || "" }));
     }
     const timeline = Array.isArray(LOC.timeline) ? LOC.timeline : [];
-    for (let i = 0; i < timeline.length; i++) add(timeline[i], srcKind(timeline[i] && timeline[i].src));
+    for (let i = 0; i < timeline.length; i++) add(timeline[i], rowKind(timeline[i]));
     if (hasLate120(S)) {
       const extra = ordersFromSys(S.late120).concat(ordersFromSys(T.paper_late120));
       for (let i = 0; i < extra.length; i++) add(extra[i], "paper120");
+    }
+    // 60-book fills that never made the merged timeline still need a versioned tag.
+    const paperOnly = ordersFromSys(S.late).concat(ordersFromSys(T.paper_late));
+    for (let i = 0; i < paperOnly.length; i++) {
+      if (rowKind(paperOnly[i]) === "paper120") add(paperOnly[i], "paper120");
     }
     rows.sort((a, b) => (b.ts || 0) - (a.ts || 0));
     return rows;
@@ -339,6 +485,9 @@
 
   return {
     srcKind: srcKind,
+    rowKind: rowKind,
+    srcTag: srcTag,
+    describeSrc: describeSrc,
     eventKind: eventKind,
     normOrder: normOrder,
     ordersFromSys: ordersFromSys,
