@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PAPERBOTS · 三系统对比后台</title>
+<title>PAPERBOTS · 四系统对比后台</title>
 <link rel="icon" href="data:,">
 <style>
 :root{
   --bg:#070b10; --panel:#0c131c; --panel2:#101a26; --line:#1b2a3a; --text:#c9d6e3; --dim:#6b7f94;
   --green:#39ff88; --red:#ff4d6a; --amber:#ffcc4d; --cyan:#4dd9ff; --purple:#b77dff; --orange:#ff9d3d;
-  --late:#ffd34d; --maker:#2ee6c5; --live:#ff7a59;
+  --late:#ffd34d; --late120:#e7a4ff; --maker:#2ee6c5; --live:#ff7a59;
   --mono:"JetBrains Mono","Noto Sans Mono CJK SC","Noto Sans Mono","DejaVu Sans Mono","PingFang SC","Microsoft YaHei",monospace;
 }
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px}
 body{background:radial-gradient(1400px 700px at 50% -15%,#12263a 0%,var(--bg) 55%)}
 a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
-#app{max-width:1480px;margin:0 auto;padding:12px 14px 28px;display:flex;flex-direction:column;gap:12px}
+#app{max-width:1680px;margin:0 auto;padding:12px 14px 28px;display:flex;flex-direction:column;gap:12px}
 .panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .ptitle{font-size:12px;color:var(--dim);letter-spacing:.5px;padding:9px 12px 7px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .ptitle b{color:var(--text);font-weight:700}
@@ -28,11 +28,12 @@ a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
 #live{margin-left:auto;display:flex;gap:12px;align-items:center}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-right:5px;animation:pulse 1.6s infinite}
 @keyframes pulse{50%{opacity:.35}}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media (max-width:1100px){.cards{grid-template-columns:1fr}}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:1280px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.cards{grid-template-columns:1fr}}
 .card{padding:0;position:relative}
 .card .top{padding:12px 14px 8px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.card .name{font-size:15px;font-weight:800}
+.card .name{font-size:15px;font-weight:800;line-height:1.25}
 .card .ver{color:var(--dim);font-size:11px;margin-top:3px}
 .card .body{padding:10px 14px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
 .metric .k{color:var(--dim);font-size:11px} .metric .v{font-size:18px;font-weight:700;margin-top:2px;letter-spacing:.3px}
@@ -43,7 +44,7 @@ a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
 .pill.down,.pill.halted{color:var(--red);border-color:var(--red)} .pill.remote_ok{color:var(--cyan);border-color:var(--cyan)}
 .dogbox{margin-top:4px;padding:8px 10px;border:1px dashed var(--line);border-radius:6px;background:rgba(0,0,0,.18);font-size:11.5px;line-height:1.55;grid-column:1/-1}
 .dogbox b{color:var(--text)} .dogbox .row{display:flex;flex-wrap:wrap;gap:10px 16px}
-.accent-late{box-shadow:inset 3px 0 0 var(--late)} .accent-maker{box-shadow:inset 3px 0 0 var(--maker)} .accent-live{box-shadow:inset 3px 0 0 var(--live)}
+.accent-late{box-shadow:inset 3px 0 0 var(--late)} .accent-late120{box-shadow:inset 3px 0 0 var(--late120)} .accent-maker{box-shadow:inset 3px 0 0 var(--maker)} .accent-live{box-shadow:inset 3px 0 0 var(--live)}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line)}
 .tab{border:1px solid var(--line);background:#0a121b;color:var(--dim);padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px}
 .tab.on{color:var(--text);border-color:var(--cyan);box-shadow:0 0 0 1px rgba(77,217,255,.25) inset}
@@ -56,7 +57,7 @@ th{color:var(--dim);font-weight:500;text-align:right;padding:7px 8px;border-bott
 td{padding:6px 8px;text-align:right;border-bottom:1px solid rgba(27,42,58,.55);vertical-align:top}
 th:first-child,td:first-child,td.left,th.left{text-align:left}
 td.wrap{white-space:normal;line-height:1.35;max-width:280px}
-.src-p{color:var(--late)} .src-m{color:var(--maker)} .src-l{color:var(--live)}
+.src-p{color:var(--late)} .src-p120{color:var(--late120)} .src-m{color:var(--maker)} .src-l{color:var(--live)}
 .hint{color:var(--dim);font-size:11.5px;padding:8px 12px}
 .ev{display:grid;grid-template-columns:64px 88px 1fr;gap:8px;padding:5px 12px;border-bottom:1px dashed rgba(27,42,58,.55);font-size:12px;line-height:1.4}
 .ev .t{color:var(--dim)} .ev .b{font-weight:700} .ev.warn .m{color:var(--amber)} .ev.err .m{color:var(--red)}
@@ -70,8 +71,8 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
 <body>
 <div id="app">
   <div id="hdr" class="panel">
-    <div id="logo">▚ PAPERBOTS<span>三系统对比后台</span></div>
-    <span class="badge">尾盘模拟 · 做市模拟 · 尾盘实盘</span>
+    <div id="logo">▚ PAPERBOTS<span>四系统对比后台</span></div>
+    <span class="badge">尾盘60→10 · 尾盘120→10 · 做市 · 实盘</span>
     <a href="./">← 返回大厅</a>
     <div class="hitem">生成<b id="h-gen">-</b></div>
     <div id="live"><span id="h-mode"><span class="dot"></span>实时 · 每 5 秒</span><span class="hitem">SGT<b id="h-clock">--:--:--</b></span></div>
@@ -87,6 +88,7 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
   <div class="panel">
     <div class="tabs" id="tabs">
       <div class="tab on" data-tab="align">订单对齐（尾盘模拟 vs 实盘）</div>
+      <div class="tab" data-tab="align120">订单对齐 60–10、120–10</div>
       <div class="tab" data-tab="timeline">订单时间线</div>
       <div class="tab" data-tab="maker">做市明细</div>
       <div class="tab" data-tab="events">近况事件流</div>
@@ -94,7 +96,8 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
     <div class="filters" id="filters">
       <span>筛选系统</span>
       <button class="on" data-src="all">全部</button>
-      <button data-src="paper">模拟尾盘</button>
+      <button data-src="paper">尾盘60</button>
+      <button data-src="paper120">尾盘120</button>
       <button data-src="live">实盘尾盘</button>
       <button data-src="maker">做市</button>
       <span id="filter-note"></span>
@@ -104,6 +107,7 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
 </div>
 
 <script src="config.js"></script>
+<script src="compare.js"></script>
 <script>
 "use strict";
 const TZ = "Asia/Singapore";
@@ -150,28 +154,46 @@ function mkt(slug, asset, dur_s){
   return esc((slug||"").replace(/-updown-/," ").replace(/-\d+$/,""));
 }
 
-function renderCards(){
+const CARD_SPECS = [
+  {key:"paper_late", accent:"accent-late", color:"var(--late)", title:"模拟·尾盘60→10", verFallback:"late-v4"},
+  {key:"paper_late120", accent:"accent-late120", color:"var(--late120)", title:"模拟·尾盘120→10", verFallback:"late-v4-120"},
+  {key:"paper_maker", accent:"accent-maker", color:"var(--maker)", title:"模拟·做市", verFallback:"maker-v7"},
+  {key:"live_late", accent:"accent-live", color:"var(--live)", title:"实盘尾盘", verFallback:""},
+];
+const SIDE_LABEL = {paper:"模拟尾盘 60-10", paper120:"模拟尾盘 120-10", live:"实盘尾盘"};
+const SIDE_COLOR = {paper:"var(--late)", paper120:"var(--late120)", live:"var(--live)"};
+const SIDE_CLASS = {paper:"src-p", paper120:"src-p120", live:"src-l"};
+
+function sysOf(key){
+  if(window.PBCompare) return PBCompare.sysNode(S, key);
   const T = S.triad || {};
-  const items = [
-    {key:"paper_late", accent:"accent-late", color:"var(--late)", fallback:S.late},
-    {key:"paper_maker", accent:"accent-maker", color:"var(--maker)", fallback:S.pm},
-    {key:"live_late", accent:"accent-live", color:"var(--live)", fallback:S.late_live},
-  ];
-  $("cards").innerHTML = items.map(({key,accent,color,fallback}) => {
-    const X = T[key] || fallback;
-    if(!X) return `<div class="panel card ${accent}"><div class="top"><div><div class="name" style="color:${color}">${key}</div><div class="ver">暂无数据</div></div></div><div class="body"><div class="empty">—</div></div></div>`;
+  if(key==="paper_late") return T.paper_late || S.late || null;
+  if(key==="paper_late120") return T.paper_late120 || S.late120 || null;
+  if(key==="paper_maker") return T.paper_maker || S.pm || null;
+  if(key==="live_late") return T.live_late || S.late_live || null;
+  return null;
+}
+function openCount(X, isMaker){
+  if(Array.isArray(X.open)) return X.open_n != null ? X.open_n : X.open.length;
+  if(isMaker) return X.open_n != null ? X.open_n : 0;
+  return X.open != null ? X.open : 0;
+}
+
+function renderCards(){
+  $("cards").innerHTML = CARD_SPECS.map(spec => {
+    const X = sysOf(spec.key);
+    if(!X) return `<div class="panel card ${spec.accent}"><div class="top"><div><div class="name" style="color:${spec.color}">${esc(spec.title)}</div><div class="ver">暂无数据</div></div>${dogPill("down")}</div><div class="body"><div class="empty">接口尚未返回这一路</div></div></div>`;
     const dog = X.dog || {};
     const today = X.today || {};
-    const isMaker = key === "paper_maker";
-    const wr = X.win_rate;
-    const todayWr = today.win_rate;
-    // 今日开单: late = filled (settled+open); maker = fills
-    const todayOpens = today.opens ?? today.n ?? (isMaker ? today.fills : null);
-    const title = X.label || key;
-    const ver = X.version || (isMaker ? "maker-v5" : "");
-    return `<div class="panel card ${accent}">
+    const isMaker = spec.key === "paper_maker";
+    const wr = window.PBCompare ? PBCompare.winRate(X) : X.win_rate;
+    const todayWr = window.PBCompare ? PBCompare.winRate(today) : today.win_rate;
+    // 今日开单: opens, else n, else fills（做市用 fills）
+    const todayOpens = window.PBCompare ? PBCompare.todayOpens(today) : (today.opens ?? today.n ?? (isMaker ? today.fills : null));
+    const ver = X.version || spec.verFallback;
+    return `<div class="panel card ${spec.accent}">
       <div class="top">
-        <div><div class="name" style="color:${color}">${esc(title)}</div><div class="ver">${esc(ver)} · 预算 ${fmt$(X.budget,0)}</div></div>
+        <div><div class="name" style="color:${spec.color}">${esc(spec.title)}</div><div class="ver">${esc(ver)}${X.budget!=null?` · 预算 ${fmt$(X.budget,0)}`:""}</div></div>
         ${dogPill(dog.status)}
       </div>
       <div class="body">
@@ -180,7 +202,7 @@ function renderCards(){
         <div class="metric"><div class="k">今日盈亏</div><div class="v ${pnlCls(today.pnl)}">${pnlTxt(today.pnl)}</div></div>
         <div class="metric"><div class="k">今日开单</div><div class="v">${todayOpens!=null?todayOpens:"—"}<span class="muted" style="font-size:12px"> 笔</span></div></div>
         <div class="metric"><div class="k">胜率(累计/今日)</div><div class="v">${fmtPct(wr)} / ${fmtPct(todayWr)}</div></div>
-        <div class="metric"><div class="k">${isMaker?"开仓盘口":"开仓"}</div><div class="v">${isMaker?(X.open_n??(X.open||[]).length): (X.open??0)}</div></div>
+        <div class="metric"><div class="k">${isMaker?"开仓盘口":"开仓"}</div><div class="v">${openCount(X, isMaker)}</div></div>
         <div class="metric"><div class="k">${isMaker?"报价数":"漏单 / 异常"}</div><div class="v">${isMaker?(X.quotes??"—"):`${X.missed??0} / ${X.errors??0}`}</div></div>
         ${isMaker?`<div class="metric wide"><div class="k">动态仓位</div><div class="v" style="font-size:14px">${X.dyn&&X.dyn.enabled?`权益×${((X.dyn.size_frac||0)*100).toFixed(0)}% → 单笔约 ${fmt$(X.dyn.quote_usd,0)}（上限 ${((X.dyn.size_max_frac||0)*100).toFixed(0)}% / 下限 ${fmt$(X.dyn.size_min_usd,0)}）`:"固定 "+fmt$((X.dyn||{}).max_quote_usd,0)}</div></div>
         <div class="metric"><div class="k">HALT</div><div class="v" style="font-size:14px">${X.halted?'<span class="down">是</span> '+(X.halt_reason||""):'<span class="up">否</span>'}</div></div>
@@ -200,57 +222,102 @@ function renderCards(){
 }
 
 function renderDogs(){
-  const T = S.triad || {};
-  const rows = [
-    ["模拟·尾盘", T.paper_late],
-    ["模拟·做市", T.paper_maker],
-    ["实盘·尾盘", T.live_late],
-  ];
-  $("dogs").innerHTML = `<div class="scroll" style="max-height:220px"><table>
+  const rows = CARD_SPECS.map(spec => [spec.title, sysOf(spec.key)]);
+  $("dogs").innerHTML = `<div class="scroll" style="max-height:260px"><table>
     <tr><th class="left">系统</th><th>状态</th><th>pid</th><th>uptime</th><th>心跳年龄</th><th>ws pm</th><th>ws bn</th><th>SYNC</th><th class="left">心跳摘要</th></tr>` +
     rows.map(([name,X]) => {
       const d = (X&&X.dog)||{};
-      return `<tr><td class="left">${esc(name)}</td><td>${dogPill(d.status)}</td><td>${esc(d.pid??"—")}</td><td>${dur(d.uptime_s)}</td><td>${ago(d.hb_age)}</td>
+      return `<tr><td class="left">${esc(name)}</td><td>${dogPill(X?d.status:"down")}</td><td>${esc(d.pid??"—")}</td><td>${dur(d.uptime_s)}</td><td>${ago(d.hb_age)}</td>
         <td class="${d.ws_pm==="ok"?"up":"down"}">${esc(d.ws_pm||"—")}</td><td class="${d.ws_bn==="ok"?"up":"down"}">${esc(d.ws_bn||"—")}</td>
         <td>${d.sync_age!=null?ago(d.sync_age):"—"}</td><td class="left wrap">${esc((d.hb_info||"").slice(0,160))}</td></tr>`;
     }).join("") + `</table></div>`;
 }
 
 function sideCell(r, cls){
-  if(!r) return `<td class="left oc-side muted">—</td>`;
+  if(!r) return `<td class="left wrap muted">—</td>`;
   const note = r.note ? ` title="${esc(r.note)}"` : "";
-  return `<td class="left wrap"${note}><span class="st ${cls||""}">${esc(stZh(r.status))}</span> ${esc(r.side||"")}
+  const size = r.size != null && !isNaN(Number(r.size)) ? ` · ${Number(r.size).toFixed(1)}股` : "";
+  const filled = window.PBCompare && PBCompare.isFilled(r);
+  const status = stZh(r.status);
+  const flag = filled ? "成交" : (r.status === "missed" ? "没吃到" : "");
+  const head = flag && flag !== status ? `${flag} · ${status}` : status;
+  return `<td class="left wrap"${note}><span class="st ${cls||""}">${esc(head)}</span> ${esc(r.side||"")}
     ${r.fill_px!=null?` @ ${Number(r.fill_px).toFixed(2)}`:""}
+    ${size}
     ${r.cost!=null?` · ${fmt$(r.cost)}`:""}
     ${r.pnl!=null?` · <span class="${pnlCls(r.pnl)}">${pnlTxt(r.pnl)}</span>`:""}
     ${r.edge!=null?` · edge ${(r.edge*100).toFixed(1)}¢`:""}
   </td>`;
 }
 
-function renderAlign(){
-  const LOC = S.late_order_compare;
-  if(!LOC){ $("pane").innerHTML = `<div class="empty">暂无订单对齐数据</div>`; return; }
-  let rows = LOC.aligned || [];
-  if(SRC==="paper") rows = rows.filter(e => e.paper);
-  if(SRC==="live") rows = rows.filter(e => e.live);
-  if(SRC==="maker"){ $("pane").innerHTML = `<div class="empty">做市无 slug 对齐（请看「做市明细」）</div>`; return; }
-  const nBoth = LOC.n_aligned_both ?? rows.filter(e=>e.paper&&e.live).length;
-  $("filter-note").textContent = `双侧对齐 ${nBoth} · 模拟 ${LOC.n_paper||0} / 实盘 ${LOC.n_live||0}`;
-  $("pane").innerHTML = `<div class="hint">同 slug 并排 · 悬停看备注 · 筛选只影响显示</div>
-    <div class="scroll"><table><tr><th>到期</th><th class="left">市场</th><th class="left" style="color:var(--late)">模拟尾盘</th><th class="left" style="color:var(--live)">实盘尾盘</th></tr>` +
+function countLine(view, sides){
+  const c = view.count || {};
+  const bits = sides.map(s => {
+    const short = s === "paper" ? "60→10" : s === "paper120" ? "120→10" : "实盘";
+    return `${short} ${c[s] || 0}（成交 ${(c.filled || {})[s] || 0}）`;
+  });
+  const bothLabel = sides.length > 2 ? "三侧对齐" : "双侧对齐";
+  const pair = c.pair || {};
+  const extra = sides.length > 2 ? ` · 60∩实盘 ${pair.paper_live || 0} · 60∩120 ${pair.paper_paper120 || 0}` : "";
+  const missing = sides.indexOf("paper120") >= 0 && view.has120 === false ? " · 120→10 暂无数据" : "";
+  return `${bothLabel} ${c.both || 0}${extra} · ${bits.join(" / ")}${missing}`;
+}
+
+function renderAlignTable(sides, opts){
+  if(!window.PBCompare){ $("pane").innerHTML = `<div class="empty">对比脚本未加载</div>`; $("filter-note").textContent = ""; return; }
+  if(SRC === "maker" || (opts.paperOnly && SRC === "live")){
+    $("filter-note").textContent = "";
+    $("pane").innerHTML = `<div class="empty">${opts.paperOnly && SRC === "live" ? "这一页只对齐两套模拟尾盘（60→10 与 120→10）" : "做市无 slug 对齐（请看「做市明细」）"}</div>`;
+    return;
+  }
+  const view = PBCompare.align(S, sides);
+  let rows = view.rows.slice();
+  if(SRC === "paper") rows = rows.filter(e => e.paper);
+  else if(SRC === "paper120") rows = rows.filter(e => e.paper120);
+  else if(SRC === "live") rows = rows.filter(e => e.live);
+  $("filter-note").textContent = countLine(view, sides);
+  if(!view.rows.length){ $("pane").innerHTML = `<div class="empty">${opts.empty}</div>`; return; }
+  if(!rows.length){ $("pane").innerHTML = `<div class="empty">没有符合筛选的订单</div>`; return; }
+  const heads = sides.map(s => `<th class="left" style="color:${SIDE_COLOR[s]}">${SIDE_LABEL[s]}</th>`).join("");
+  $("pane").innerHTML = `<div class="hint">${opts.hint}</div>
+    <div class="scroll"><table><tr><th>到期</th><th class="left">市场</th>${heads}</tr>` +
     rows.map(e => {
-      const t = e.end_ts || (e.paper&&e.paper.ts) || (e.live&&e.live.ts);
-      return `<tr><td>${t?tsg(t,false):"—"}</td><td class="left">${mkt(e.slug,e.asset,e.dur_s)}</td>${sideCell(e.paper,"src-p")}${sideCell(e.live,"src-l")}</tr>`;
+      const t = e.end_ts || (e.paper && e.paper.ts) || (e.paper120 && e.paper120.ts) || (e.live && e.live.ts);
+      return `<tr><td>${t ? tsg(t, false) : "—"}</td><td class="left">${mkt(e.slug, e.asset, e.dur_s)}</td>${sides.map(s => sideCell(e[s], SIDE_CLASS[s])).join("")}</tr>`;
     }).join("") + `</table></div>`;
 }
 
+function renderAlign(){
+  renderAlignTable(["paper", "paper120", "live"], {
+    empty: "暂无订单对齐数据",
+    hint: "同 slug 并排 · 模拟尾盘 60-10 · 模拟尾盘 120-10 · 实盘尾盘 · 悬停看备注 · 某一侧没有订单时显示 —",
+  });
+}
+
+function renderAlign120(){
+  renderAlignTable(["paper", "paper120"], {
+    paperOnly: true,
+    empty: "暂无 60→10 / 120→10 订单可对齐",
+    hint: "订单对齐 60–10、120–10 · 按市场 slug / 到期并排 · 成交、方向、价格、股数、盈亏、没吃到",
+  });
+}
+
+function srcLabel(src){
+  const kind = window.PBCompare ? PBCompare.srcKind(src) : src;
+  if(kind === "live") return `<span class="src-l">实盘</span>`;
+  if(kind === "maker") return `<span class="src-m">做市</span>`;
+  if(kind === "paper120") return `<span class="src-p120">模拟120</span>`;
+  if(kind === "paper") return `<span class="src-p">模拟60</span>`;
+  return esc(src || "—");
+}
+
 function renderTimeline(){
-  const LOC = S.late_order_compare || {};
-  let rows = (LOC.timeline || []).slice();
+  let rows = window.PBCompare ? PBCompare.mergedTimeline(S).slice() : ((S.late_order_compare || {}).timeline || []).slice();
   const makerFills = ((S.triad||{}).paper_maker || S.pm || {}).recent_fills || [];
-  if(SRC==="paper") rows = rows.filter(r => r.src==="paper");
-  else if(SRC==="live") rows = rows.filter(r => r.src==="live");
-  else if(SRC==="maker"){
+  if(SRC === "paper") rows = rows.filter(r => (window.PBCompare ? PBCompare.srcKind(r.src) : r.src) === "paper");
+  else if(SRC === "paper120") rows = rows.filter(r => (window.PBCompare ? PBCompare.srcKind(r.src) : r.src) === "paper120");
+  else if(SRC === "live") rows = rows.filter(r => (window.PBCompare ? PBCompare.srcKind(r.src) : r.src) === "live");
+  else if(SRC === "maker"){
     rows = makerFills.map(r => ({...r, src:"maker", status:"fill", slug:r.market_id, cost: (r.price||0)*(r.size||0), pnl:null}));
   } else {
     rows = rows.concat(makerFills.map(r => ({...r, src:"maker", status:"fill", slug:r.market_id, fill_px:r.price, cost:(r.price||0)*(r.size||0)})));
@@ -258,9 +325,8 @@ function renderTimeline(){
   }
   $("filter-note").textContent = `共 ${rows.length} 条`;
   $("pane").innerHTML = `<div class="scroll"><table><tr><th>时间</th><th>来源</th><th class="left">市场</th><th>方向</th><th>状态</th><th>价</th><th>成本/股数</th><th>盈亏</th></tr>` +
-    rows.slice(0,120).map(r => {
-      const src = r.src==="live"?`<span class="src-l">实盘</span>`: r.src==="maker"?`<span class="src-m">做市</span>`:`<span class="src-p">模拟</span>`;
-      return `<tr><td>${tsg(r.ts,false)}</td><td>${src}</td><td class="left">${mkt(r.slug,r.asset,r.dur_s)}</td><td>${esc(r.side||"—")}</td>
+    rows.slice(0,160).map(r => {
+      return `<tr><td>${tsg(r.ts,false)}</td><td>${srcLabel(r.src)}</td><td class="left">${mkt(r.slug,r.asset,r.dur_s)}</td><td>${esc(r.side||"—")}</td>
         <td>${esc(stZh(r.status))}</td><td>${r.fill_px!=null?Number(r.fill_px).toFixed(2):(r.price!=null?Number(r.price).toFixed(2):"—")}</td>
         <td>${r.cost!=null?fmt$(r.cost):(r.size!=null?Number(r.size).toFixed(1)+"股":"—")}</td>
         <td class="${pnlCls(r.pnl)}">${r.pnl==null?"—":pnlTxt(r.pnl)}</td></tr>`;
@@ -295,19 +361,20 @@ function renderMaker(){
 
 function renderEvents(){
   let ev = (S.triad && S.triad.events) || S.pm_events || [];
-  if(SRC==="paper") ev = ev.filter(e => e.bot==="pm_late" || e.src==="paper_late");
-  if(SRC==="live") ev = ev.filter(e => e.bot==="pm_live" || e.src==="live_late");
-  if(SRC==="maker") ev = ev.filter(e => e.bot==="pm_maker" || e.src==="paper_maker");
+  const kindOf = e => window.PBCompare ? PBCompare.eventKind(e) : "";
+  if(SRC==="paper" || SRC==="paper120" || SRC==="live" || SRC==="maker") ev = ev.filter(e => kindOf(e)===SRC);
   $("filter-note").textContent = `${ev.length} 条`;
   $("pane").innerHTML = `<div class="scroll">` + (ev.length? ev.map(e => {
     const cls = (e.level==="ERROR"||e.kind==="error")?"err": ((e.level==="WARN"||e.kind==="missed"||e.kind==="halt")?"warn":"");
-    const bot = e.bot==="pm_live"?"实盘": e.bot==="pm_maker"?"做市": e.bot==="pm_late"?"尾盘":e.bot;
+    const kind = kindOf(e);
+    const bot = kind==="live"?"实盘": kind==="maker"?"做市": kind==="paper120"?"尾盘120": kind==="paper"?"尾盘60": (e.bot||"");
     return `<div class="ev ${cls}"><div class="t">${tsg(e.ts,false)}</div><div class="b">${esc(bot)}</div><div class="m">${esc(e.message||"")}</div></div>`;
   }).join("") : `<div class="empty">暂无事件</div>`) + `</div>`;
 }
 
 function renderPane(){
   if(TAB==="align") renderAlign();
+  else if(TAB==="align120") renderAlign120();
   else if(TAB==="timeline") renderTimeline();
   else if(TAB==="maker") renderMaker();
   else renderEvents();

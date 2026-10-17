@@ -83,7 +83,7 @@ th:first-child,td:first-child{text-align:left}
 #pos .oc-scroll th{position:sticky;top:0;z-index:1;background:#0e1824}
 #pos .oc-scroll td.oc-side{text-align:left;max-width:168px;white-space:normal;line-height:1.35;vertical-align:top}
 #pos .oc-scroll td.oc-mkt{text-align:left;white-space:nowrap}
-#pos .oc-scroll .oc-src-p{color:#ffd34d} #pos .oc-scroll .oc-src-l{color:#ff7a59}
+#pos .oc-scroll .oc-src-p{color:#ffd34d} #pos .oc-scroll .oc-src-p120{color:#e7a4ff} #pos .oc-scroll .oc-src-l{color:#ff7a59}
 #pos .oc-hint{color:var(--dim);font-size:11px;padding:0 12px 4px}
 .rbar{position:relative;width:84px;height:9px;background:#0a1018;border:1px solid #1d2b3b;display:inline-block;vertical-align:middle}
 .rbar .band{position:absolute;top:0;height:100%;background:rgba(57,255,136,.18);border-left:1px solid rgba(57,255,136,.6);border-right:1px solid rgba(57,255,136,.6)}
@@ -129,7 +129,7 @@ th:first-child,td:first-child{text-align:left}
     <div id="logo">▚ PAPERBOTS<span>模拟交易大厅</span></div>
     <span class="badge">纯模拟 · 无真钱</span>
     <span class="badge" id="h-strat" style="border-color:var(--cyan);color:var(--cyan)">策略 -</span>
-    <a class="hnav" id="nav-compare" href="compare.html">三系统对比</a>
+    <a class="hnav" id="nav-compare" href="compare.html">四系统对比</a>
     <div class="hitem">运行<b id="h-run">-</b></div>
     <div class="hitem">候选<b id="h-cands">-</b></div>
     <div class="hitem">信号<b id="h-sig">-</b></div>
@@ -168,6 +168,7 @@ th:first-child,td:first-child{text-align:left}
 
 <script id="embedded-state">/*__STATE__*/</script>
 <script src="config.js"></script>
+<script src="compare.js"></script>
 <script>
 "use strict";
 const TZ = "Asia/Singapore";
@@ -511,6 +512,22 @@ function renderPos(){
     if (LT.recent.length) hs += `<table>` + LT.recent.map(r => `<tr><td>${esc(r.slug.replace("-updown-", " ").replace(/-\d+$/, ""))} ${tsg(r.ts,false)}</td><td>${esc(r.side)}</td><td>${r.fill_px==null?"-":r.fill_px.toFixed(2)}</td>` +
       `<td>${r.status==="missed"?"没吃到":r.status==="open"?"持仓":""}</td><td class="${(r.pnl||0)>=0?"up":"down"}">${r.pnl==null?(r.cost?fmt$(r.cost):""):((r.pnl>=0?"+":"")+fmt$(r.pnl))}</td></tr>`).join("") + `</table>`;
   }
+  const L120 = window.PBCompare ? PBCompare.sysNode(S, "paper_late120") : (S.late120 || null);
+  if (L120 && (L120.equity != null || L120.pnl != null || L120.n != null)){
+    const recent120 = Array.isArray(L120.recent) ? L120.recent : [];
+    const budget120 = Number(L120.budget || 0);
+    const n120 = L120.n || 0, wins120 = L120.wins || 0;
+    const open120 = Array.isArray(L120.open) ? L120.open.length : (L120.open || 0);
+    const wr120 = window.PBCompare ? PBCompare.winRate(L120) : L120.win_rate;
+    const eq120 = L120.equity == null ? "—" : fmt$(L120.equity);
+    const pnl120 = L120.pnl == null ? "—" : `${L120.pnl>=0?"+":""}${fmt$(L120.pnl)}`;
+    hs += `<div class="sect" style="color:#e7a4ff">Polymarket 尾盘120→10 ${esc(L120.version || "late-v4-120")}（纯模拟 · 独立 $${budget120.toLocaleString("en-US")} 预算）</div>` +
+      `<div class="empty" style="padding-top:0;line-height:1.5">权益 <b>${eq120}</b> · 已结算 ${n120} 笔（赢 ${wins120}）<span class="${(L120.pnl||0)>=0?"up":"down"}">${pnl120}</span>` +
+      ` · 持仓 ${open120} 笔（${fmt$(L120.open_cost || 0)}）· 没吃到 ${L120.missed || 0}` +
+      (wr120 == null ? "" : ` · 胜率 ${wr120.toFixed(0)}%`) + `</div>`;
+    if (recent120.length) hs += `<table>` + recent120.map(r => `<tr><td>${esc((r.slug||"").replace("-updown-", " ").replace(/-\d+$/, ""))} ${r.ts?tsg(r.ts,false):""}</td><td>${esc(r.side||"")}</td><td>${r.fill_px==null?"-":Number(r.fill_px).toFixed(2)}</td>` +
+      `<td>${r.status==="missed"?"没吃到":r.status==="open"?"持仓":r.status==="settled"?"已结算":esc(r.status||"")}</td><td class="${(r.pnl||0)>=0?"up":"down"}">${r.pnl==null?(r.cost?fmt$(r.cost):""):((r.pnl>=0?"+":"")+fmt$(r.pnl))}</td></tr>`).join("") + `</table>`;
+  }
   const LL = S.late_live, LCMP = S.late_compare;
   if (LL){
     const syncAge = LL.sync_mtime != null ? (S.generated - LL.sync_mtime) : null;
@@ -534,14 +551,67 @@ function renderPos(){
     const p = LCMP.paper || {}, l = LCMP.live || {};
     const wr = v => v == null ? "—" : v.toFixed(0) + "%";
     const cell = (v, money) => v == null ? "—" : (money ? `<span class="${v>=0?"up":"down"}">${v>=0?"+":""}${fmt$(v)}</span>` : v);
-    hs += `<div class="sect" style="color:#c9d6e3">模拟 vs 实盘（同策略 late-v1）</div>` +
+    const raw120 = (LCMP.paper120 || LCMP.late120 || LCMP.paper_late120) || (window.PBCompare ? PBCompare.kpiOf(PBCompare.sysNode(S, "paper_late120")) : null);
+    const show120 = !!(raw120 && (raw120.n != null || raw120.pnl != null || raw120.equity != null || raw120.win_rate != null));
+    hs += `<div class="sect" style="color:#c9d6e3">${show120 ? "尾盘对比（60→10 · 120→10 · 实盘）" : "模拟 vs 实盘（同策略 late-v1）"}</div>` +
       `<table><tr><th></th><th>成交</th><th>胜率</th><th>盈亏</th><th>未成交</th><th>下单异常</th><th>权益</th></tr>` +
-      `<tr><td style="color:#ffd34d">模拟</td><td>${cell(p.n)}</td><td>${wr(p.win_rate)}</td><td>${cell(p.pnl,true)}</td><td>${cell(p.missed)}</td><td>${cell(p.errors)}</td><td>${cell(p.equity,true)}</td></tr>` +
+      `<tr><td style="color:#ffd34d">${show120 ? "模拟60→10" : "模拟"}</td><td>${cell(p.n)}</td><td>${wr(p.win_rate)}</td><td>${cell(p.pnl,true)}</td><td>${cell(p.missed)}</td><td>${cell(p.errors)}</td><td>${cell(p.equity,true)}</td></tr>` +
+      (show120 ? `<tr><td style="color:#e7a4ff">模拟120→10</td><td>${cell(raw120.n)}</td><td>${wr(raw120.win_rate)}</td><td>${cell(raw120.pnl,true)}</td><td>${cell(raw120.missed)}</td><td>${cell(raw120.errors)}</td><td>${cell(raw120.equity,true)}</td></tr>` : "") +
       `<tr><td style="color:#ff7a59">实盘</td><td>${cell(l.n)}</td><td>${wr(l.win_rate)}</td><td>${cell(l.pnl,true)}</td><td>${cell(l.missed)}</td><td>${cell(l.errors)}</td><td>${cell(l.equity,true)}</td></tr>` +
       `</table>`;
   }
   const LOC = S.late_order_compare;
-  if (LOC && ((LOC.aligned && LOC.aligned.length) || (LOC.timeline && LOC.timeline.length))){
+  const has120Orders = window.PBCompare && PBCompare.hasLate120(S);
+  if (has120Orders){
+    const view = PBCompare.align(S, ["paper", "paper120", "live"]);
+    const tl = PBCompare.mergedTimeline(S);
+    const stZh = s => s==="settled"?"已结算":s==="open"?"持仓":s==="missed"?"没吃到":s==="error"?"下单异常":(s||"—");
+    const mkt = (slug, asset, dur) => {
+      const base = (slug||"").replace("-updown-", " ").replace(/-\d+$/, "");
+      const d = dur ? `${Math.round(dur/60)}m` : "";
+      return esc((base || (asset||"").toUpperCase()) + (d && !base.includes(d) ? ` ${d}` : ""));
+    };
+    const sideCell = o => {
+      if (!o) return `<td class="oc-side" style="color:#6b7f94">—</td>`;
+      const px = o.fill_px == null ? "—" : Number(o.fill_px).toFixed(2);
+      const cost = o.cost == null ? "" : fmt$(o.cost);
+      const size = o.size == null ? "" : `${Number(o.size).toFixed(1)}股`;
+      const pnlHtml = o.pnl == null ? "" : `<span class="${o.pnl>=0?"up":"down"}">${o.pnl>=0?"+":""}${fmt$(o.pnl)}</span>`;
+      const note = o.note ? esc(o.note) : "";
+      const edge = o.edge != null ? ` edge ${(o.edge*100).toFixed(1)}¢` : "";
+      const status = stZh(o.status);
+      const flag = PBCompare.isFilled(o) ? "成交" : "";
+      const head = flag && flag !== status ? `${flag} · ${status}` : status;
+      return `<td class="oc-side" title="${note}${edge}"><b>${esc(o.side||"")}</b> · ${esc(head)}` +
+        `<br>${px}${size ? " · "+size : ""}${cost ? " · "+cost : ""}${pnlHtml ? " · "+pnlHtml : ""}` +
+        `${note ? `<br><span style="color:#6b7f94">${note.length>28?note.slice(0,28)+"…":note}</span>` : ""}</td>`;
+    };
+    if (view.rows.length || tl.length){
+      const c = view.count || {}, pair = c.pair || {};
+      const pv = (LOC && LOC.paper_version) || (S.late && S.late.version) || "late-v4";
+      const v120 = (S.late120 && S.late120.version) || (S.triad && S.triad.paper_late120 && S.triad.paper_late120.version) || "late-v4-120";
+      const lv = (LOC && LOC.live_version) || (S.late_live && S.late_live.version) || "live";
+      hs += `<div class="sect" style="color:#c9d6e3">订单明细对比（按市场对齐 · 60→10 ${esc(pv)} · 120→10 ${esc(v120)} · 实盘 ${esc(lv)}）</div>` +
+        `<div class="oc-hint">同 slug 并排 · 三侧对齐 ${c.both||0} · 60∩实盘 ${pair.paper_live||0} · 60∩120 ${pair.paper_paper120||0} · 60→10 ${c.paper||0}（成交 ${(c.filled||{}).paper||0}）/ 120→10 ${c.paper120||0}（成交 ${(c.filled||{}).paper120||0}）/ 实盘 ${c.live||0}（成交 ${(c.filled||{}).live||0}） · 单独的 60–10、120–10 对齐在页眉「四系统对比」</div>` +
+        `<div class="oc-scroll"><table><tr><th>到期</th><th>市场</th><th style="color:#ffd34d">模拟尾盘 60-10</th><th style="color:#e7a4ff">模拟尾盘 120-10</th><th style="color:#ff7a59">实盘尾盘</th></tr>` +
+        view.rows.map(e => {
+          const t = e.end_ts || (e.paper&&e.paper.ts) || (e.paper120&&e.paper120.ts) || (e.live&&e.live.ts);
+          return `<tr><td>${t?tsg(t,false):"—"}</td><td class="oc-mkt">${mkt(e.slug,e.asset,e.dur_s)}</td>${sideCell(e.paper)}${sideCell(e.paper120)}${sideCell(e.live)}</tr>`;
+        }).join("") + `</table></div>`;
+      if (tl.length){
+        hs += `<div class="sect" style="color:#c9d6e3">订单时间线（按触发时间 · 60|120|实盘）</div>` +
+          `<div class="oc-scroll" style="max-height:220px"><table><tr><th>时间</th><th>来源</th><th>市场</th><th>方向</th><th>状态</th><th>成交价</th><th>成本</th><th>盈亏</th></tr>` +
+          tl.map(r => {
+            const kind = PBCompare.srcKind(r.src);
+            const src = kind === "live" ? `<span class="oc-src-l">实盘</span>` : kind === "paper120" ? `<span class="oc-src-p120">模拟120</span>` : `<span class="oc-src-p">模拟60</span>`;
+            const pnl = r.pnl == null ? "—" : `<span class="${r.pnl>=0?"up":"down"}">${r.pnl>=0?"+":""}${fmt$(r.pnl)}</span>`;
+            return `<tr title="${esc(r.note||"")}"><td>${r.ts!=null?tsg(r.ts,false):"—"}</td><td>${src}</td><td class="oc-mkt">${mkt(r.slug,r.asset,r.dur_s)}</td>` +
+              `<td>${esc(r.side||"")}</td><td>${stZh(r.status)}</td><td>${r.fill_px==null?"—":Number(r.fill_px).toFixed(2)}</td>` +
+              `<td>${r.cost==null?"—":fmt$(r.cost)}</td><td>${pnl}</td></tr>`;
+          }).join("") + `</table></div>`;
+      }
+    }
+  } else if (LOC && ((LOC.aligned && LOC.aligned.length) || (LOC.timeline && LOC.timeline.length))){
     const stZh = s => s==="settled"?"已结算":s==="open"?"持仓":s==="missed"?"没吃到":s==="error"?"下单异常":(s||"—");
     const mkt = (slug, asset, dur) => {
       const base = (slug||"").replace("-updown-", " ").replace(/-\d+$/, "");
