@@ -143,7 +143,7 @@ function tsg(ts, withDate=true){
 function esc(s){ return String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
 function pnlCls(n){ return n==null?"":(n>=0?"up":"down"); }
 function pnlTxt(n){ if(n==null||isNaN(n)) return "—"; return (n>=0?"+":"")+fmt$(n); }
-function stZh(s){ return ({settled:"已结算",open:"持仓",missed:"没吃到",error:"下单异常",active:"报价中",ended:"待结算",archived_v1:"已归档v1",archived_v2:"已归档v2"}[s]||s||"—"); }
+function stZh(s){ return ({settled:"已结算",open:"持仓",missed:"没吃到",error:"下单异常",active:"报价中",ended:"待结算",archived_v1:"已归档v1",archived_v2:"已归档v2",archived_v3:"已归档v3"}[s]||s||"—"); }
 function dogPill(st){ const m={ok:"正常",stale:"心跳偏旧",down:"掉线",halted:"已停",remote_ok:"远端正常"}; return `<span class="pill ${esc(st||"down")}">${esc(m[st]||st||"—")}</span>`; }
 function mkt(slug, asset, dur_s){
   if(asset && dur_s) return `${String(asset).toUpperCase()} ${dur_s/60}m`;
@@ -163,10 +163,12 @@ function renderCards(){
     const dog = X.dog || {};
     const today = X.today || {};
     const isMaker = key === "paper_maker";
-    const wr = isMaker ? null : X.win_rate;
-    const todayWr = isMaker ? null : today.win_rate;
+    const wr = X.win_rate;
+    const todayWr = today.win_rate;
+    // 今日开单: late = filled (settled+open); maker = fills
+    const todayOpens = today.opens ?? today.n ?? (isMaker ? today.fills : null);
     const title = X.label || key;
-    const ver = X.version || (isMaker ? "maker-v3" : "");
+    const ver = X.version || (isMaker ? "maker-v5" : "");
     return `<div class="panel card ${accent}">
       <div class="top">
         <div><div class="name" style="color:${color}">${esc(title)}</div><div class="ver">${esc(ver)} · 预算 ${fmt$(X.budget,0)}</div></div>
@@ -175,8 +177,9 @@ function renderCards(){
       <div class="body">
         <div class="metric"><div class="k">权益</div><div class="v">${fmt$(X.equity)}</div></div>
         <div class="metric"><div class="k">累计盈亏</div><div class="v ${pnlCls(X.pnl)}">${pnlTxt(X.pnl)}</div></div>
-        <div class="metric"><div class="k">今日盈亏</div><div class="v ${pnlCls(today.pnl)}">${pnlTxt(today.pnl)}${today.n!=null?` <span class="muted" style="font-size:12px">(${today.n}笔)</span>`:""}</div></div>
-        <div class="metric"><div class="k">${isMaker?"今日成交":"胜率(累计/今日)"}</div><div class="v">${isMaker?((today.fills??"—")+` 笔`):`${fmtPct(wr)} / ${fmtPct(todayWr)}`}</div></div>
+        <div class="metric"><div class="k">今日盈亏</div><div class="v ${pnlCls(today.pnl)}">${pnlTxt(today.pnl)}</div></div>
+        <div class="metric"><div class="k">今日开单</div><div class="v">${todayOpens!=null?todayOpens:"—"}<span class="muted" style="font-size:12px"> 笔</span></div></div>
+        <div class="metric"><div class="k">胜率(累计/今日)</div><div class="v">${fmtPct(wr)} / ${fmtPct(todayWr)}</div></div>
         <div class="metric"><div class="k">${isMaker?"开仓盘口":"开仓"}</div><div class="v">${isMaker?(X.open_n??(X.open||[]).length): (X.open??0)}</div></div>
         <div class="metric"><div class="k">${isMaker?"报价数":"漏单 / 异常"}</div><div class="v">${isMaker?(X.quotes??"—"):`${X.missed??0} / ${X.errors??0}`}</div></div>
         ${isMaker?`<div class="metric wide"><div class="k">动态仓位</div><div class="v" style="font-size:14px">${X.dyn&&X.dyn.enabled?`权益×${((X.dyn.size_frac||0)*100).toFixed(0)}% → 单笔约 ${fmt$(X.dyn.quote_usd,0)}（上限 ${((X.dyn.size_max_frac||0)*100).toFixed(0)}% / 下限 ${fmt$(X.dyn.size_min_usd,0)}）`:"固定 "+fmt$((X.dyn||{}).max_quote_usd,0)}</div></div>
