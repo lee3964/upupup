@@ -9,7 +9,7 @@
 :root{ --late-shadow:#e6c35c; --logit60:#c9a0ff; --logit120:#a78bfa; --logitt60:#8b5cf6; 
   --bg:#070b10; --panel:#0c131c; --panel2:#101a26; --line:#1b2a3a; --text:#c9d6e3; --dim:#6b7f94;
   --green:#39ff88; --red:#ff4d6a; --amber:#ffcc4d; --cyan:#4dd9ff; --purple:#b77dff; --orange:#ff9d3d;
-  --late:#ffd34d; --late120:#ffb84d; --maker:#2ee6c5; --live:#ff7a59;
+  --late:#ffd34d; --late120:#ffb84d; --maker:#2ee6c5; --live:#ff7a59; --live2:#ff9d3d;
   --mono:"JetBrains Mono","Noto Sans Mono CJK SC","Noto Sans Mono","DejaVu Sans Mono","PingFang SC","Microsoft YaHei",monospace;
 }
 *{box-sizing:border-box}
@@ -31,7 +31,7 @@ a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
 .gridwrap{display:flex;flex-direction:column;gap:8px}
 .belowgrid{display:flex;flex-direction:column;gap:8px;margin-top:4px}
 .belowgrid .gridhint{padding-top:4px}
-.belowcards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.belowcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 @media (max-width:900px){.belowcards{grid-template-columns:1fr}}
 .gridhint{color:var(--dim);font-size:11.5px;padding:0 2px}
 .abgrid{display:grid;grid-template-columns:88px repeat(3,minmax(0,1fr));gap:8px;align-items:stretch}
@@ -54,10 +54,10 @@ a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
 .up{color:var(--green)} .down{color:var(--red)} .muted{color:var(--dim)}
 .pill{display:inline-block;padding:1px 7px;border-radius:3px;border:1px solid;font-size:11px;font-weight:700}
 .pill.ok{color:var(--green);border-color:var(--green)} .pill.stale{color:var(--amber);border-color:var(--amber)}
-.pill.down,.pill.halted{color:var(--red);border-color:var(--red)} .pill.remote_ok{color:var(--cyan);border-color:var(--cyan)}
+.pill.down,.pill.halted{color:var(--red);border-color:var(--red)} .pill.stopped{color:var(--amber);border-color:var(--amber)} .pill.remote_ok{color:var(--cyan);border-color:var(--cyan)}
 .dogbox{margin-top:4px;padding:8px 10px;border:1px dashed var(--line);border-radius:6px;background:rgba(0,0,0,.18);font-size:11.5px;line-height:1.55;grid-column:1/-1}
 .dogbox b{color:var(--text)} .dogbox .row{display:flex;flex-wrap:wrap;gap:10px 16px}
-.accent-late{box-shadow:inset 3px 0 0 var(--late)} .accent-late120{box-shadow:inset 3px 0 0 var(--late120)} .accent-late-shadow{box-shadow:inset 3px 0 0 var(--late-shadow)} .accent-logit60{box-shadow:inset 3px 0 0 var(--logit60)} .accent-logit120{box-shadow:inset 3px 0 0 var(--logit120)} .accent-logitt60{box-shadow:inset 3px 0 0 var(--logitt60)} .accent-maker{box-shadow:inset 3px 0 0 var(--maker)} .accent-live{box-shadow:inset 3px 0 0 var(--live)}
+.accent-late{box-shadow:inset 3px 0 0 var(--late)} .accent-late120{box-shadow:inset 3px 0 0 var(--late120)} .accent-late-shadow{box-shadow:inset 3px 0 0 var(--late-shadow)} .accent-logit60{box-shadow:inset 3px 0 0 var(--logit60)} .accent-logit120{box-shadow:inset 3px 0 0 var(--logit120)} .accent-logitt60{box-shadow:inset 3px 0 0 var(--logitt60)} .accent-maker{box-shadow:inset 3px 0 0 var(--maker)} .accent-live{box-shadow:inset 3px 0 0 var(--live)} .accent-live2{box-shadow:inset 3px 0 0 var(--live2)}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line)}
 .tab{border:1px solid var(--line);background:#0a121b;color:var(--dim);padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px}
 .tab.on{color:var(--text);border-color:var(--cyan);box-shadow:0 0 0 1px rgba(77,217,255,.25) inset}
@@ -110,7 +110,7 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
     </div>
   </div>
   <div class="belowgrid">
-    <div class="gridhint">实盘 LIVE + paper 做市（不在竞赛 3×2 格内）</div>
+    <div class="gridhint">实盘 LIVE1 + LIVE2(shadow) + paper 做市（不在竞赛 3×2 格内）</div>
     <div class="belowcards" id="cards-below"></div>
   </div>
   <div id="ab-pairs"></div>
@@ -174,7 +174,7 @@ function esc(s){ return String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<"
 function pnlCls(n){ return n==null?"":(n>=0?"up":"down"); }
 function pnlTxt(n){ if(n==null||isNaN(n)) return "—"; return (n>=0?"+":"")+fmt$(n); }
 function stZh(s){ return ({settled:"已结算",open:"持仓",missed:"没吃到",error:"下单异常",active:"报价中",ended:"待结算",archived_v1:"已归档v1",archived_v2:"已归档v2",archived_v3:"已归档v3"}[s]||s||"—"); }
-function dogPill(st){ const m={ok:"正常",stale:"心跳偏旧",down:"掉线",halted:"已停",remote_ok:"远端正常"}; return `<span class="pill ${esc(st||"down")}">${esc(m[st]||st||"—")}</span>`; }
+function dogPill(st){ const m={ok:"正常",stale:"心跳偏旧",down:"掉线",halted:"已停",stopped:"已停机(预期)",remote_ok:"远端正常"}; return `<span class="pill ${esc(st||"down")}">${esc(m[st]||st||"—")}</span>`; }
 function mkt(slug, asset, dur_s){
   if(asset && dur_s) return `${String(asset).toUpperCase()} ${dur_s/60}m`;
   return esc((slug||"").replace(/-updown-/," ").replace(/-\d+$/,""));
@@ -196,7 +196,8 @@ function renderCards(){
     {key:"paper_late_logit_t60", accent:"accent-logitt60", color:"var(--logitt60)", fallback:S.late_logit_t60, short:"logit@T60"},
   ];
   const belowRow = [
-    {key:"live_late", accent:"accent-live", color:"var(--live)", fallback:S.late_live, short:"LIVE"},
+    {key:"live_late", accent:"accent-live", color:"var(--live)", fallback:S.late_live, short:"LIVE1"},
+    {key:"live_late2", accent:"accent-live2", color:"var(--live2)", fallback:S.late_live2, short:"LIVE2"},
     {key:"paper_maker", accent:"accent-maker", color:"var(--maker)", fallback:S.pm, short:"做市"},
   ];
   function cellHTML({key,accent,color,fallback,short}){
@@ -209,7 +210,9 @@ function renderCards(){
     const todayOpens = today.opens ?? today.n ?? null;
     const title = X.label || short;
     const ver = X.version || "";
-    const liveTag = key === "live_late" ? `<span class="badge" style="border-color:var(--live);color:var(--live);margin-left:4px">LIVE · logit×T-60</span>` : "";
+    let liveTag = "";
+    if(key === "live_late") liveTag = `<span class="badge" style="border-color:var(--live);color:var(--live);margin-left:4px">LIVE1 · logit×T-60</span>`;
+    if(key === "live_late2") liveTag = `<span class="badge" style="border-color:var(--live2);color:var(--live2);margin-left:4px">${X.shadow!==false?"SHADOW":"LIVE2"} · dry-logit-120</span>`;
     return `<div class="panel card ${accent}">
       <div class="top">
         <div><div class="name" style="color:${color}">${esc(title)}${liveTag}</div><div class="ver">${esc(ver)}${X.budget!=null?` · 预算 ${fmt$(X.budget,0)}`:""}</div></div>
@@ -263,7 +266,8 @@ function renderDogs(){
     ["paper·logit60", T.paper_late_logit60],
     ["paper·logit120", T.paper_late_logit120],
     ["paper·logit@T60", T.paper_late_logit_t60],
-    ["live·logit@T60", T.live_late],
+    ["live1·logit@T60", T.live_late],
+    ["live2·shadow", T.live_late2],
     ["paper·做市", T.paper_maker],
   ];
   $("dogs").innerHTML = `<div class="scroll" style="max-height:220px"><table>
@@ -359,7 +363,7 @@ function renderEvents(){
     paper_logit60:["pm_late_logit60","paper_late_logit60"],
     paper_logit120:["pm_late_logit120","paper_late_logit120"],
     paper_logit_t60:["pm_late_logit_t60","paper_late_logit_t60"],
-    live:["pm_live","live_late"],
+    live:["pm_live","live_late","pm_live2","live_late2"],
   };
   if(SRC!=="all" && botMap[SRC]){
     const want = new Set(botMap[SRC]);
@@ -368,7 +372,7 @@ function renderEvents(){
   $("filter-note").textContent = `${ev.length} 条`;
   $("pane").innerHTML = `<div class="scroll">` + (ev.length? ev.map(e => {
     const cls = (e.level==="ERROR"||e.kind==="error")?"err": ((e.level==="WARN"||e.kind==="missed"||e.kind==="halt")?"warn":"");
-    const bot = ({pm_live:"LIVE",pm_maker:"做市",pm_late120:"book120",pm_late:"book60",pm_late_shadow:"book@T60",pm_late_logit60:"logit60",pm_late_logit120:"logit120",pm_late_logit_t60:"logit@T60"})[e.bot] || e.bot;
+    const bot = ({pm_live:"LIVE1",pm_live2:"LIVE2",pm_maker:"做市",pm_late120:"book120",pm_late:"book60",pm_late_shadow:"book@T60",pm_late_logit60:"logit60",pm_late_logit120:"logit120",pm_late_logit_t60:"logit@T60"})[e.bot] || e.bot;
     return `<div class="ev ${cls}"><div class="t">${tsg(e.ts,false)}</div><div class="b">${esc(bot)}</div><div class="m">${esc(e.message||"")}</div></div>`;
   }).join("") : `<div class="empty">暂无事件</div>`) + `</div>`;
 }
