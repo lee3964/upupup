@@ -6,7 +6,7 @@
 <title>PAPERBOTS · late A/B 3×2</title>
 <link rel="icon" href="data:,">
 <style>
-:root{ --late-shadow:#e6c35c; --logit60:#c9a0ff; --logit120:#a78bfa; --logitt60:#8eb4ff; 
+:root{ --late-shadow:#e6c35c; --logit60:#c9a0ff; --logit120:#a78bfa; --logitt60:#8b5cf6; 
   --bg:#070b10; --panel:#0c131c; --panel2:#101a26; --line:#1b2a3a; --text:#c9d6e3; --dim:#6b7f94;
   --green:#39ff88; --red:#ff4d6a; --amber:#ffcc4d; --cyan:#4dd9ff; --purple:#b77dff; --orange:#ff9d3d;
   --late:#ffd34d; --late120:#ffb84d; --maker:#2ee6c5; --live:#ff7a59;
@@ -29,6 +29,10 @@ a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-right:5px;animation:pulse 1.6s infinite}
 @keyframes pulse{50%{opacity:.35}}
 .gridwrap{display:flex;flex-direction:column;gap:8px}
+.belowgrid{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.belowgrid .gridhint{padding-top:4px}
+.belowcards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:900px){.belowcards{grid-template-columns:1fr}}
 .gridhint{color:var(--dim);font-size:11.5px;padding:0 2px}
 .abgrid{display:grid;grid-template-columns:88px repeat(3,minmax(0,1fr));gap:8px;align-items:stretch}
 .abgrid .corner,.abgrid .colh,.abgrid .rowh{display:flex;align-items:center;justify-content:center;text-align:center;color:var(--dim);font-size:11px;letter-spacing:.3px;padding:6px 4px}
@@ -54,8 +58,6 @@ a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
 .dogbox{margin-top:4px;padding:8px 10px;border:1px dashed var(--line);border-radius:6px;background:rgba(0,0,0,.18);font-size:11.5px;line-height:1.55;grid-column:1/-1}
 .dogbox b{color:var(--text)} .dogbox .row{display:flex;flex-wrap:wrap;gap:10px 16px}
 .accent-late{box-shadow:inset 3px 0 0 var(--late)} .accent-late120{box-shadow:inset 3px 0 0 var(--late120)} .accent-late-shadow{box-shadow:inset 3px 0 0 var(--late-shadow)} .accent-logit60{box-shadow:inset 3px 0 0 var(--logit60)} .accent-logit120{box-shadow:inset 3px 0 0 var(--logit120)} .accent-logitt60{box-shadow:inset 3px 0 0 var(--logitt60)} .accent-maker{box-shadow:inset 3px 0 0 var(--maker)} .accent-live{box-shadow:inset 3px 0 0 var(--live)}
-#cards-below{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-@media (max-width:800px){#cards-below{grid-template-columns:1fr}}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line)}
 .tab{border:1px solid var(--line);background:#0a121b;color:var(--dim);padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px}
 .tab.on{color:var(--text);border-color:var(--cyan);box-shadow:0 0 0 1px rgba(77,217,255,.25) inset}
@@ -87,7 +89,7 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
 <div id="app">
   <div id="hdr" class="panel">
     <div id="logo">▚ PAPERBOTS<span>late A/B · 3×2</span></div>
-    <span class="badge">行=模型 · 列=时机 · 全 paper · LIVE/做市在下方</span>
+    <span class="badge">行=模型 book+z / logit×z · 列=时机 60 / 120 / T-60 · 全 paper · LIVE/做市在下方</span>
     <a href="./">← 返回大厅</a>
     <a href="maker.html">做市 →</a>
     <div class="hitem">生成<b id="h-gen">-</b></div>
@@ -95,7 +97,7 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
   </div>
 
   <div class="gridwrap">
-    <div class="gridhint">配对矩阵（固定 2 行 × 3 列，全 paper）：同列比时机，同行比模型。右下格为 paper late-logit-t60。</div>
+    <div class="gridhint">配对矩阵（固定 2 行 × 3 列 · 全 paper）：同列比时机，同行比模型；右下格 = paper logit×z @ T-60</div>
     <div class="abgrid" id="abgrid">
       <div class="corner"></div>
       <div class="colh">60-scan</div>
@@ -107,8 +109,10 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
       <div class="cards" id="cards-logit"></div>
     </div>
   </div>
-  <div class="gridhint">下方：LIVE 与做市（不进 3×2）</div>
-  <div id="cards-below"></div>
+  <div class="belowgrid">
+    <div class="gridhint">实盘 LIVE + paper 做市（不在竞赛 3×2 格内）</div>
+    <div class="belowcards" id="cards-below"></div>
+  </div>
   <div id="ab-pairs"></div>
 
   <div class="panel">
@@ -118,7 +122,7 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
 
   <div class="panel">
     <div class="tabs" id="tabs">
-      <div class="tab on" data-tab="align">订单对齐（paper + LIVE）</div>
+      <div class="tab on" data-tab="align">订单对齐（6 paper + LIVE）</div>
       <div class="tab" data-tab="timeline">订单时间线</div>
       <div class="tab" data-tab="events">近况事件流</div>
     </div>
@@ -176,70 +180,37 @@ function mkt(slug, asset, dur_s){
   return esc((slug||"").replace(/-updown-/," ").replace(/-\d+$/,""));
 }
 
-function firstNode(keys, fallbacks){
+function renderCards(){
   const T = S.triad || {};
-  for(const k of keys){ if(T[k]) return T[k]; }
-  for(const k of fallbacks || []){ if(S[k]) return S[k]; }
-  return null;
-}
-// T-60 logit is paper late-logit-t60. Never the live book.
-function logitT60Node(){
-  const direct = firstNode(
-    ["paper_late_logit_t60","paper_late_logitt60","paper_late_logitT60"],
-    ["late_logit_t60","late_logitt60","late_logitT60"]
-  );
-  if(direct) return direct;
-  const T = S.triad || {};
-  const skip = new Set(["paper_late_logit60","paper_late_logit120","events","ab_pairs"]);
-  for(const k of Object.keys(T)){
-    if(skip.has(k)) continue;
-    const n = T[k];
-    if(!n || typeof n !== "object" || Array.isArray(n)) continue;
-    const blob = `${k} ${n.version||""} ${n.label||""} ${n.tag||""}`.toLowerCase();
-    if(blob.includes("live")) continue;
-    if(blob.includes("logit") && (blob.includes("t60") || blob.includes("t-60") || blob.includes("t_60"))) return n;
-  }
-  return null;
-}
-const BOOK_ROW = [
-  {keys:["paper_late"], fallbacks:["late"], accent:"accent-late", color:"var(--late)", short:"book60"},
-  {keys:["paper_late120"], fallbacks:["late120"], accent:"accent-late120", color:"var(--late120)", short:"book120"},
-  {keys:["paper_late_shadow"], fallbacks:["late_shadow"], accent:"accent-late-shadow", color:"var(--late-shadow)", short:"book@T60"},
-];
-const LOGIT_ROW = [
-  {keys:["paper_late_logit60"], fallbacks:["late_logit60"], accent:"accent-logit60", color:"var(--logit60)", short:"logit60"},
-  {keys:["paper_late_logit120"], fallbacks:["late_logit120"], accent:"accent-logit120", color:"var(--logit120)", short:"logit120"},
-  {logitT60:true, accent:"accent-logitt60", color:"var(--logitt60)", short:"logit@T60", verFallback:"late-logit-t60"},
-];
-const BELOW_ROW = [
-  {keys:["live_late"], fallbacks:["late_live"], accent:"accent-live", color:"var(--live)", short:"LIVE", live:true},
-  {keys:["paper_maker"], fallbacks:["pm"], accent:"accent-maker", color:"var(--maker)", short:"做市", maker:true, verFallback:"maker"},
-];
-function specNode(spec){
-  if(spec.logitT60) return logitT60Node();
-  return firstNode(spec.keys, spec.fallbacks);
-}
-function openCount(X, isMaker){
-  if(isMaker) return X.open_n != null ? X.open_n : (Array.isArray(X.open) ? X.open.length : (X.open||0));
-  if(Array.isArray(X.open)) return X.open.length;
-  return X.open ?? 0;
-}
-function cellHTML(spec){
-  const X = specNode(spec);
-  const accent = spec.accent, color = spec.color, short = spec.short;
-  if(!X) return `<div class="panel card ${accent}"><div class="top"><div><div class="name" style="color:${color}">${esc(short)}</div><div class="ver">${esc(spec.verFallback||"暂无数据")}</div></div></div><div class="body"><div class="empty">—</div></div></div>`;
-  const dog = X.dog || {};
-  const today = X.today || {};
-  const isMaker = !!spec.maker;
-  const todayOpens = isMaker ? (today.fills ?? today.opens ?? today.n ?? null) : (today.opens ?? today.n ?? null);
-  const title = X.label || short;
-  const ver = X.version || spec.verFallback || "";
-  const liveTag = spec.live ? `<span class="badge" style="border-color:var(--live);color:var(--live);margin-left:4px">LIVE</span>` : "";
-  const makerBits = isMaker ? `<div class="metric wide"><div class="k">动态仓位</div><div class="v" style="font-size:14px">${X.dyn&&X.dyn.enabled?`权益×${((X.dyn.size_frac||0)*100).toFixed(1)}% → 单笔约 ${fmt$(X.dyn.quote_usd,0)}（上限 ${((X.dyn.size_max_frac||0)*100).toFixed(0)}% / 下限 ${fmt$(X.dyn.size_min_usd,0)}）`:"固定 "+fmt$((X.dyn||{}).max_quote_usd,0)}</div></div>
-        <div class="metric"><div class="k">HALT</div><div class="v" style="font-size:14px">${X.halted?'<span class="down">是</span> '+(esc(X.halt_reason||"")):'<span class="up">否</span>'}</div></div>` : `
-        <div class="metric"><div class="k">开仓</div><div class="v">${openCount(X, false)}</div></div>
-        <div class="metric"><div class="k">漏单 / 异常</div><div class="v">${X.missed??0} / ${X.errors??0}</div></div>`;
-  return `<div class="panel card ${accent}">
+  // Fixed 3×2 pairwise grid — ALL PAPER:
+  // rows = model (book+z / logit×z), cols = timing (60-scan / 120-scan / T-60)
+  // LIVE + maker render below the grid (cards-below).
+  const bookRow = [
+    {key:"paper_late", accent:"accent-late", color:"var(--late)", fallback:S.late, short:"book60"},
+    {key:"paper_late120", accent:"accent-late120", color:"var(--late120)", fallback:S.late120, short:"book120"},
+    {key:"paper_late_shadow", accent:"accent-late-shadow", color:"var(--late-shadow)", fallback:S.late_shadow, short:"book@T60"},
+  ];
+  const logitRow = [
+    {key:"paper_late_logit60", accent:"accent-logit60", color:"var(--logit60)", fallback:S.late_logit60, short:"logit60"},
+    {key:"paper_late_logit120", accent:"accent-logit120", color:"var(--logit120)", fallback:S.late_logit120, short:"logit120"},
+    {key:"paper_late_logit_t60", accent:"accent-logitt60", color:"var(--logitt60)", fallback:S.late_logit_t60, short:"logit@T60"},
+  ];
+  const belowRow = [
+    {key:"live_late", accent:"accent-live", color:"var(--live)", fallback:S.late_live, short:"LIVE"},
+    {key:"paper_maker", accent:"accent-maker", color:"var(--maker)", fallback:S.pm, short:"做市"},
+  ];
+  function cellHTML({key,accent,color,fallback,short}){
+    const X = T[key] || fallback;
+    if(!X) return `<div class="panel card ${accent}"><div class="top"><div><div class="name" style="color:${color}">${esc(short)}</div><div class="ver">暂无数据</div></div></div><div class="body"><div class="empty">—</div></div></div>`;
+    const dog = X.dog || {};
+    const today = X.today || {};
+    const wr = X.win_rate;
+    const todayWr = today.win_rate;
+    const todayOpens = today.opens ?? today.n ?? null;
+    const title = X.label || short;
+    const ver = X.version || "";
+    const liveTag = key === "live_late" ? `<span class="badge" style="border-color:var(--live);color:var(--live);margin-left:4px">LIVE · logit×T-60</span>` : "";
+    return `<div class="panel card ${accent}">
       <div class="top">
         <div><div class="name" style="color:${color}">${esc(title)}${liveTag}</div><div class="ver">${esc(ver)}${X.budget!=null?` · 预算 ${fmt$(X.budget,0)}`:""}</div></div>
         ${dogPill(dog.status)}
@@ -248,11 +219,10 @@ function cellHTML(spec){
         <div class="metric"><div class="k">权益</div><div class="v">${fmt$(X.equity)}</div></div>
         <div class="metric"><div class="k">累计盈亏</div><div class="v ${pnlCls(X.pnl)}">${pnlTxt(X.pnl)}</div></div>
         <div class="metric"><div class="k">今日盈亏</div><div class="v ${pnlCls(today.pnl)}">${pnlTxt(today.pnl)}</div></div>
-        <div class="metric"><div class="k">${isMaker?"今日成交":"今日开单"}</div><div class="v">${todayOpens!=null?todayOpens:"—"}<span class="muted" style="font-size:12px"> 笔</span></div></div>
-        <div class="metric"><div class="k">胜率(累计/今日)</div><div class="v">${fmtPct(X.win_rate)} / ${fmtPct(today.win_rate)}</div></div>
-        ${isMaker?`<div class="metric"><div class="k">开仓盘口</div><div class="v">${openCount(X, true)}</div></div>
-        <div class="metric"><div class="k">报价数</div><div class="v">${X.quotes??"—"}</div></div>`:""}
-        ${makerBits}
+        <div class="metric"><div class="k">今日开单</div><div class="v">${todayOpens!=null?todayOpens:"—"}<span class="muted" style="font-size:12px"> 笔</span></div></div>
+        <div class="metric"><div class="k">胜率(累计/今日)</div><div class="v">${fmtPct(wr)} / ${fmtPct(todayWr)}</div></div>
+        <div class="metric"><div class="k">开仓</div><div class="v">${X.open??0}</div></div>
+        <div class="metric"><div class="k">漏单 / 异常</div><div class="v">${X.missed??0} / ${X.errors??0}</div></div>
         <div class="dogbox"><b>🐕 交易狗</b>
           <div class="row" style="margin-top:4px">
             <span>pid <b>${esc(dog.pid??"—")}</b></span>
@@ -264,15 +234,14 @@ function cellHTML(spec){
         </div>
       </div>
     </div>`;
-}
-function renderCards(){
-  // Fixed 3×2: rows = model (book+z / logit×z), cols = timing (60 / 120 / T-60). All paper.
+  }
+  // Place three cells after each row header via display:contents wrappers
   const bookEl = $("cards-book");
   const logitEl = $("cards-logit");
   const belowEl = $("cards-below");
-  if(bookEl) bookEl.innerHTML = BOOK_ROW.map(cellHTML).join("");
-  if(logitEl) logitEl.innerHTML = LOGIT_ROW.map(cellHTML).join("");
-  if(belowEl) belowEl.innerHTML = BELOW_ROW.map(cellHTML).join("");
+  if(bookEl) bookEl.innerHTML = bookRow.map(cellHTML).join("");
+  if(logitEl) logitEl.innerHTML = logitRow.map(cellHTML).join("");
+  if(belowEl) belowEl.innerHTML = belowRow.map(cellHTML).join("");
 }
 
 function renderAbPairs(){
@@ -286,15 +255,16 @@ function renderAbPairs(){
 }
 
 function renderDogs(){
+  const T = S.triad || {};
   const rows = [
-    ["paper·book60", specNode(BOOK_ROW[0])],
-    ["paper·book120", specNode(BOOK_ROW[1])],
-    ["paper·book@T60", specNode(BOOK_ROW[2])],
-    ["paper·logit60", specNode(LOGIT_ROW[0])],
-    ["paper·logit120", specNode(LOGIT_ROW[1])],
-    ["paper·logit@T60", specNode(LOGIT_ROW[2])],
-    ["LIVE", specNode(BELOW_ROW[0])],
-    ["做市", specNode(BELOW_ROW[1])],
+    ["paper·book60", T.paper_late],
+    ["paper·book120", T.paper_late120],
+    ["paper·book@T60", T.paper_late_shadow],
+    ["paper·logit60", T.paper_late_logit60],
+    ["paper·logit120", T.paper_late_logit120],
+    ["paper·logit@T60", T.paper_late_logit_t60],
+    ["live·logit@T60", T.live_late],
+    ["paper·做市", T.paper_maker],
   ];
   $("dogs").innerHTML = `<div class="scroll" style="max-height:220px"><table>
     <tr><th class="left">系统</th><th>状态</th><th>pid</th><th>uptime</th><th>心跳年龄</th><th>ws pm</th><th>ws bn</th><th>SYNC</th><th class="left">心跳摘要</th></tr>` +
@@ -321,36 +291,28 @@ function renderAlign(){
   const LOC = S.late_order_compare;
   if(!LOC){ $("pane").innerHTML = `<div class="empty">暂无订单对齐数据</div>`; return; }
   const LANES = [
-    {keys:["paper"], label:"book60", cls:"src-p", color:"var(--late)", n:"n_paper"},
-    {keys:["paper120"], label:"book120", cls:"src-p120", color:"var(--late120)", n:"n_paper120"},
-    {keys:["paper_shadow"], label:"book@T60", cls:"src-sh", color:"var(--late-shadow)", n:"n_paper_shadow"},
-    {keys:["paper_logit60"], label:"logit60", cls:"src-l60", color:"var(--logit60)", n:"n_paper_logit60"},
-    {keys:["paper_logit120"], label:"logit120", cls:"src-l120", color:"var(--logit120)", n:"n_paper_logit120"},
-    {keys:["paper_logit_t60","paper_logitt60","logit_t60"], label:"logit@T60", cls:"src-lt60", color:"var(--logitt60)", n:["n_paper_logit_t60","n_paper_logitt60"]},
-    {keys:["live"], label:"LIVE", cls:"src-l", color:"var(--live)", n:"n_live"},
+    {key:"paper", label:"book60", cls:"src-p", color:"var(--late)"},
+    {key:"paper120", label:"book120", cls:"src-p120", color:"var(--late120)"},
+    {key:"paper_shadow", label:"book@T60", cls:"src-sh", color:"var(--late-shadow)"},
+    {key:"paper_logit60", label:"logit60", cls:"src-l60", color:"var(--logit60)"},
+    {key:"paper_logit120", label:"logit120", cls:"src-l120", color:"var(--logit120)"},
+    {key:"paper_logit_t60", label:"logit@T60", cls:"src-lt60", color:"var(--logitt60)"},
+    {key:"live", label:"LIVE", cls:"src-l", color:"var(--live)"},
   ];
-  const cellOf = (e, lane) => {
-    for(const k of lane.keys){ if(e && e[k]) return e[k]; }
-    return null;
-  };
   let rows = LOC.aligned || [];
   if(SRC!=="all"){
-    const lane = LANES.find(L => L.keys[0] === SRC || (SRC==="paper_logit_t60" && L.keys.indexOf("paper_logit_t60")>=0));
-    if(lane) rows = rows.filter(e => cellOf(e, lane));
+    const map = {paper:"paper", paper120:"paper120", paper_shadow:"paper_shadow", paper_logit60:"paper_logit60", paper_logit120:"paper_logit120", paper_logit_t60:"paper_logit_t60", live:"live"};
+    const k = map[SRC];
+    if(k) rows = rows.filter(e => e[k]);
   }
-  const nAll = rows.filter(e => LANES.every(L => cellOf(e, L))).length;
-  const counts = LANES.map(L => {
-    const ns = Array.isArray(L.n) ? L.n : [L.n];
-    const n = ns.map(k => LOC[k]).find(v => v != null);
-    return `${L.label} ${n||0}`;
-  }).join(" / ");
-  $("filter-note").textContent = `全齐 ${nAll} · ${counts}`;
+  const n6 = LOC.n_aligned_6 ?? rows.filter(e => LANES.every(L => e[L.key])).length;
+  $("filter-note").textContent = `6齐 ${n6} · book60 ${LOC.n_paper||0} / book120 ${LOC.n_paper120||0} / @T60 ${LOC.n_paper_shadow||0} / logit60 ${LOC.n_paper_logit60||0} / logit120 ${LOC.n_paper_logit120||0} / logit@T60 ${LOC.n_paper_logit_t60||0} / LIVE ${LOC.n_live||0}`;
   const heads = LANES.map(L => `<th class="left" style="color:${L.color}">${L.label}</th>`).join("");
-  $("pane").innerHTML = `<div class="hint">同 slug 并排 · 6 paper + LIVE · 做市不进此表（见下方卡片）· 悬停看备注</div>
+  $("pane").innerHTML = `<div class="hint">同 slug 七列并排（6 paper + LIVE）· 做市在下方卡片 · 悬停看备注</div>
     <div class="scroll"><table class="align6"><tr><th>到期</th><th class="left">市场</th>${heads}</tr>` +
     rows.map(e => {
-      const t = e.end_ts || LANES.map(L => { const c = cellOf(e, L); return c && c.ts; }).find(Boolean);
-      return `<tr><td>${t?tsg(t,false):"—"}</td><td class="left">${mkt(e.slug,e.asset,e.dur_s)}</td>${LANES.map(L => sideCell(cellOf(e, L), L.cls)).join("")}</tr>`;
+      const t = e.end_ts || LANES.map(L => e[L.key]&&e[L.key].ts).find(Boolean);
+      return `<tr><td>${t?tsg(t,false):"—"}</td><td class="left">${mkt(e.slug,e.asset,e.dur_s)}</td>${LANES.map(L => sideCell(e[L.key], L.cls)).join("")}</tr>`;
     }).join("") + `</table></div>`;
 }
 
@@ -360,7 +322,7 @@ function srcLabel(src){
   if(src==="paper_shadow") return `<span class="src-sh">book@T60</span>`;
   if(src==="paper_logit60") return `<span class="src-l60">logit60</span>`;
   if(src==="paper_logit120") return `<span class="src-l120">logit120</span>`;
-  if(src==="paper_logit_t60"||src==="paper_logitt60"||src==="paper_late_logit_t60"||src==="logit_t60") return `<span class="src-lt60">logit@T60</span>`;
+  if(src==="paper_logit_t60") return `<span class="src-lt60">logit@T60</span>`;
   return `<span class="src-p">book60</span>`;
 }
 function rowSrcKind(r){
@@ -370,7 +332,7 @@ function rowSrcKind(r){
   if(s==="paper_shadow") return "paper_shadow";
   if(s==="paper_logit60") return "paper_logit60";
   if(s==="paper_logit120") return "paper_logit120";
-  if(s==="paper_logit_t60"||s==="paper_logitt60"||s==="paper_late_logit_t60"||s==="logit_t60") return "paper_logit_t60";
+  if(s==="paper_logit_t60") return "paper_logit_t60";
   return "paper";
 }
 
@@ -396,7 +358,7 @@ function renderEvents(){
     paper_shadow:["pm_late_shadow","paper_late_shadow"],
     paper_logit60:["pm_late_logit60","paper_late_logit60"],
     paper_logit120:["pm_late_logit120","paper_late_logit120"],
-    paper_logit_t60:["pm_late_logit_t60","paper_late_logit_t60","pm_late_logitt60","paper_late_logitt60"],
+    paper_logit_t60:["pm_late_logit_t60","paper_late_logit_t60"],
     live:["pm_live","live_late"],
   };
   if(SRC!=="all" && botMap[SRC]){
@@ -406,7 +368,7 @@ function renderEvents(){
   $("filter-note").textContent = `${ev.length} 条`;
   $("pane").innerHTML = `<div class="scroll">` + (ev.length? ev.map(e => {
     const cls = (e.level==="ERROR"||e.kind==="error")?"err": ((e.level==="WARN"||e.kind==="missed"||e.kind==="halt")?"warn":"");
-    const bot = ({pm_live:"LIVE",pm_maker:"做市",pm_late120:"book120",pm_late:"book60",pm_late_shadow:"book@T60",pm_late_logit60:"logit60",pm_late_logit120:"logit120",pm_late_logit_t60:"logit@T60",pm_late_logitt60:"logit@T60"})[e.bot] || e.bot;
+    const bot = ({pm_live:"LIVE",pm_maker:"做市",pm_late120:"book120",pm_late:"book60",pm_late_shadow:"book@T60",pm_late_logit60:"logit60",pm_late_logit120:"logit120",pm_late_logit_t60:"logit@T60"})[e.bot] || e.bot;
     return `<div class="ev ${cls}"><div class="t">${tsg(e.ts,false)}</div><div class="b">${esc(bot)}</div><div class="m">${esc(e.message||"")}</div></div>`;
   }).join("") : `<div class="empty">暂无事件</div>`) + `</div>`;
 }
