@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAPERBOTS · 模拟做市</title>
+<link rel="icon" href="data:,">
+<style>
+
+:root{ --late-shadow:#e6c35c; --logit60:#c9a0ff; --logit120:#a78bfa; 
+  --bg:#070b10; --panel:#0c131c; --panel2:#101a26; --line:#1b2a3a; --text:#c9d6e3; --dim:#6b7f94;
+  --green:#39ff88; --red:#ff4d6a; --amber:#ffcc4d; --cyan:#4dd9ff; --purple:#b77dff; --orange:#ff9d3d;
+  --late:#ffd34d; --late120:#ffb84d; --maker:#2ee6c5; --live:#ff7a59;
+  --mono:"JetBrains Mono","Noto Sans Mono CJK SC","Noto Sans Mono","DejaVu Sans Mono","PingFang SC","Microsoft YaHei",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px}
+body{background:radial-gradient(1400px 700px at 50% -15%,#12263a 0%,var(--bg) 55%)}
+a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
+#app{max-width:1480px;margin:0 auto;padding:12px 14px 28px;display:flex;flex-direction:column;gap:12px}
+.panel{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ptitle{font-size:12px;color:var(--dim);letter-spacing:.5px;padding:9px 12px 7px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.ptitle b{color:var(--text);font-weight:700}
+#hdr{display:flex;align-items:center;gap:14px;padding:10px 14px;flex-wrap:wrap}
+#logo{font-weight:800;letter-spacing:1.5px;color:var(--green);text-shadow:0 0 8px rgba(57,255,136,.45)}
+#logo span{color:var(--text);font-weight:600;margin-left:6px;letter-spacing:1px}
+.badge{border:1px solid var(--amber);color:var(--amber);padding:1px 7px;border-radius:3px;font-size:11px}
+.hitem{color:var(--dim)} .hitem b{color:var(--text);margin-left:4px}
+#live{margin-left:auto;display:flex;gap:12px;align-items:center}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-right:5px;animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.cards{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+@media (max-width:1600px){.cards{grid-template-columns:repeat(3,1fr)}} @media (max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}} @media (max-width:800px){.cards{grid-template-columns:1fr}}
+.card{padding:0;position:relative}
+.card .top{padding:12px 14px 8px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.card .name{font-size:15px;font-weight:800}
+.card .ver{color:var(--dim);font-size:11px;margin-top:3px}
+.card .body{padding:10px 14px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.metric .k{color:var(--dim);font-size:10px} .metric .v{font-size:16px;font-weight:700;margin-top:2px;letter-spacing:.3px}
+.metric.wide{grid-column:1/-1}
+.up{color:var(--green)} .down{color:var(--red)} .muted{color:var(--dim)}
+.pill{display:inline-block;padding:1px 7px;border-radius:3px;border:1px solid;font-size:11px;font-weight:700}
+.pill.ok{color:var(--green);border-color:var(--green)} .pill.stale{color:var(--amber);border-color:var(--amber)}
+.pill.down,.pill.halted{color:var(--red);border-color:var(--red)} .pill.remote_ok{color:var(--cyan);border-color:var(--cyan)}
+.dogbox{margin-top:4px;padding:8px 10px;border:1px dashed var(--line);border-radius:6px;background:rgba(0,0,0,.18);font-size:11.5px;line-height:1.55;grid-column:1/-1}
+.dogbox b{color:var(--text)} .dogbox .row{display:flex;flex-wrap:wrap;gap:10px 16px}
+.accent-late{box-shadow:inset 3px 0 0 var(--late)} .accent-late120{box-shadow:inset 3px 0 0 var(--late120)} .accent-late-shadow{box-shadow:inset 3px 0 0 var(--late-shadow)} .accent-logit60{box-shadow:inset 3px 0 0 var(--logit60)} .accent-logit120{box-shadow:inset 3px 0 0 var(--logit120)} .accent-maker{box-shadow:inset 3px 0 0 var(--maker)} .accent-live{box-shadow:inset 3px 0 0 var(--live)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line)}
+.tab{border:1px solid var(--line);background:#0a121b;color:var(--dim);padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px}
+.tab.on{color:var(--text);border-color:var(--cyan);box-shadow:0 0 0 1px rgba(77,217,255,.25) inset}
+.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--dim);font-size:12px}
+.filters select,.filters button{background:#0a121b;border:1px solid var(--line);color:var(--text);border-radius:4px;padding:4px 8px;font-family:inherit;font-size:12px}
+.filters button{cursor:pointer} .filters button.on{border-color:var(--amber);color:var(--amber)}
+.scroll{max-height:520px;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{color:var(--dim);font-weight:500;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0e1824;z-index:1}
+td{padding:6px 8px;text-align:right;border-bottom:1px solid rgba(27,42,58,.55);vertical-align:top}
+th:first-child,td:first-child,td.left,th.left{text-align:left}
+td.wrap{white-space:normal;line-height:1.35;max-width:280px}
+.src-p{color:var(--late)} .src-p120{color:var(--late120)} .src-m{color:var(--maker)} .src-l{color:var(--live)}
+.hint{color:var(--dim);font-size:11.5px;padding:8px 12px}
+.ev{display:grid;grid-template-columns:64px 88px 1fr;gap:8px;padding:5px 12px;border-bottom:1px dashed rgba(27,42,58,.55);font-size:12px;line-height:1.4}
+.ev .t{color:var(--dim)} .ev .b{font-weight:700} .ev.warn .m{color:var(--amber)} .ev.err .m{color:var(--red)}
+.empty{padding:18px;color:var(--dim);text-align:center}
+.cmp grid, .cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.side{border:1px solid var(--line);border-radius:4px;padding:6px 8px;text-align:left;font-size:11.5px;line-height:1.4;min-height:52px;background:rgba(0,0,0,.15)}
+.side.miss{opacity:.75} .side .st{font-weight:700}
+#pane{min-height:200px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px;max-width:720px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr" class="panel">
+    <div id="logo">▚ PAPERBOTS<span>模拟做市</span></div>
+    <span class="badge">maker-v8 · 独立页（不入 late A/B）</span>
+    <a href="./">← 大厅</a>
+    <a href="compare.html">← 6 late 竞赛</a>
+    <div class="hitem">生成<b id="h-gen">-</b></div>
+    <div id="live"><span id="h-mode"><span class="dot"></span>实时 · 每 5 秒</span><span class="hitem">SGT<b id="h-clock">--:--:--</b></span></div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="panel">
+    <div class="ptitle"><b>交易狗 · 做市进程</b><span>pid / 心跳 / ws</span></div>
+    <div id="dogs" class="hint">加载中…</div>
+  </div>
+
+  <div class="panel">
+    <div class="ptitle"><b>做市明细</b><span>盘口 / 结算 / fills</span></div>
+    <div id="pane"><div class="empty">加载中…</div></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+"use strict";
+const TZ = "Asia/Singapore";
+const $ = id => document.getElementById(id);
+const FLOOR_API = String(window.FLOOR_API || new URLSearchParams(location.search).get("api") || "").replace(/\/$/, "");
+function stateUrl(){
+  const abs = FLOOR_API ? (FLOOR_API + "/api/state") : "api/state";
+  const u = new URL(abs, location.href);
+  u.searchParams.set("_", String(Date.now()));
+  const k = new URLSearchParams(location.search).get("k") || (function(){try{return localStorage.getItem("pb_floor_k")||""}catch(_){return ""}})();
+  if(k) u.searchParams.set("k", k);
+  return FLOOR_API ? u.toString() : (u.pathname + u.search);
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+function fmt$(n,d=2){if(n==null||isNaN(n))return "—"; return (Number(n)<0?"-$":"$")+Math.abs(Number(n)).toFixed(d);}
+function pnlCls(n){return n>0?"up":n<0?"down":"muted";}
+function pnlTxt(n){if(n==null)return "—"; return (n>=0?"+":"")+fmt$(n).replace("$","");}
+function fmtPct(n){return n==null?"—":(Number(n).toFixed(1)+"%");}
+function ago(s){if(s==null)return "—"; s=Number(s); if(s<60)return Math.floor(s)+"s"; if(s<3600)return Math.floor(s/60)+"m"; return Math.floor(s/3600)+"h";}
+function dur(s){if(s==null)return "—"; s=Number(s); const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h?`${h}h${m}m`:`${m}m`;}
+function tsg(ts,full){if(!ts)return "—"; const d=new Date(ts*1000); return d.toLocaleString("zh-CN",{timeZone:TZ,hour12:false,...(full?{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}:{hour:"2-digit",minute:"2-digit",second:"2-digit"})});}
+function dogPill(st){
+  const s=st||"down";
+  const lab={ok:"OK",remote_ok:"远程OK",stale:"心跳旧",down:"离线",halted:"HALT"}[s]||s;
+  return `<span class="pill ${esc(s)}">${esc(lab)}</span>`;
+}
+
+let S=null;
+function renderCards(){
+  const X = (S.triad||{}).paper_maker || S.pm;
+  if(!X){ $("cards").innerHTML = `<div class="panel card accent-maker"><div class="body"><div class="empty">暂无做市数据</div></div></div>`; return; }
+  const dog=X.dog||{}, today=X.today||{};
+  $("cards").innerHTML = `<div class="panel card accent-maker">
+    <div class="top">
+      <div><div class="name" style="color:var(--maker)">${esc(X.label||"模拟·做市")}</div>
+      <div class="ver">${esc(X.version||"maker-v8")} · 预算 ${fmt$(X.budget,0)}</div></div>
+      ${dogPill(dog.status)}
+    </div>
+    <div class="body">
+      <div class="metric"><div class="k">权益</div><div class="v">${fmt$(X.equity)}</div></div>
+      <div class="metric"><div class="k">累计盈亏</div><div class="v ${pnlCls(X.pnl)}">${pnlTxt(X.pnl)}</div></div>
+      <div class="metric"><div class="k">今日盈亏</div><div class="v ${pnlCls(today.pnl)}">${pnlTxt(today.pnl)}</div></div>
+      <div class="metric"><div class="k">今日成交</div><div class="v">${today.fills??today.n??"—"}<span class="muted" style="font-size:12px"> 笔</span></div></div>
+      <div class="metric"><div class="k">胜率(累计/今日)</div><div class="v">${fmtPct(X.win_rate)} / ${fmtPct(today.win_rate)}</div></div>
+      <div class="metric"><div class="k">开仓盘口</div><div class="v">${X.open_n??(X.open||[]).length??0}</div></div>
+      <div class="metric"><div class="k">报价数</div><div class="v">${X.quotes??"—"}</div></div>
+      <div class="metric wide"><div class="k">动态仓位</div><div class="v" style="font-size:14px">${X.dyn&&X.dyn.enabled?`权益×${((X.dyn.size_frac||0)*100).toFixed(1)}% → 单笔约 ${fmt$(X.dyn.quote_usd,0)}（上限 ${((X.dyn.size_max_frac||0)*100).toFixed(0)}% / 下限 ${fmt$(X.dyn.size_min_usd,0)}）`:"固定 "+fmt$((X.dyn||{}).max_quote_usd,0)}</div></div>
+      <div class="metric"><div class="k">HALT</div><div class="v" style="font-size:14px">${X.halted?'<span class="down">是</span> '+(X.halt_reason||""):'<span class="up">否</span>'}</div></div>
+      <div class="dogbox"><b>🐕 交易狗</b>
+        <div class="row" style="margin-top:4px">
+          <span>pid <b>${esc(dog.pid??"—")}</b></span>
+          <span>uptime <b>${dur(dog.uptime_s)}</b></span>
+          <span>心跳 <b>${ago(dog.hb_age)}</b></span>
+          <span>ws pm <b class="${dog.ws_pm==="ok"?"up":"down"}">${esc(dog.ws_pm||"—")}</b> / bn <b class="${dog.ws_bn==="ok"?"up":"down"}">${esc(dog.ws_bn||"—")}</b></span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function renderDogs(){
+  const X = (S.triad||{}).paper_maker || S.pm;
+  const d = (X&&X.dog)||{};
+  $("dogs").innerHTML = `<div class="scroll" style="max-height:160px"><table>
+    <tr><th class="left">系统</th><th>状态</th><th>pid</th><th>uptime</th><th>心跳</th><th>ws pm</th><th>ws bn</th><th class="left">心跳摘要</th></tr>
+    <tr><td class="left">模拟·做市</td><td>${dogPill(d.status)}</td><td>${esc(d.pid??"—")}</td><td>${dur(d.uptime_s)}</td><td>${ago(d.hb_age)}</td>
+      <td class="${d.ws_pm==="ok"?"up":"down"}">${esc(d.ws_pm||"—")}</td><td class="${d.ws_bn==="ok"?"up":"down"}">${esc(d.ws_bn||"—")}</td>
+      <td class="left wrap">${esc((d.hb_info||"").slice(0,160))}</td></tr></table></div>`;
+}
+function renderMaker(){
+  const P = (S.triad||{}).paper_maker || S.pm || {};
+  let html = "";
+  const mkts = P.open || P.markets || [];
+  html += `<div class="sect" style="padding:8px 12px;color:var(--dim)">当前盘口</div><div class="scroll" style="max-height:240px"><table>
+    <tr><th class="left">市场</th><th>fair</th><th>bid</th><th>ask</th><th>inv</th><th class="left">备注</th></tr>` +
+    (mkts.length? mkts.map(r=>`<tr><td class="left">${esc(r.slug||r.market_id||"")}</td><td>${r.fair!=null?Number(r.fair).toFixed(3):"—"}</td>
+      <td>${r.bid??"—"}</td><td>${r.ask??"—"}</td><td>${r.inv??r.net??"—"}</td><td class="left wrap">${esc(r.note||r.why||"")}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">无开仓盘口</td></tr>`) + `</table></div>`;
+  const settled = P.recent || P.recent_settled || [];
+  html += `<div class="sect" style="padding:8px 12px;color:var(--dim)">最近结算</div><div class="scroll" style="max-height:200px"><table>
+    <tr><th>时间</th><th class="left">市场</th><th>fills</th><th>盈亏</th><th>rebate</th></tr>` +
+    (settled.length? settled.map(r=>`<tr><td>${tsg(r.settle_ts||r.ts,false)}</td><td class="left">${esc(r.slug||"")}</td><td>${r.n_fills??"—"}</td>
+      <td class="${pnlCls(r.pnl)}">${pnlTxt(r.pnl)}</td><td>${r.rebate_est!=null?fmt$(r.rebate_est):"—"}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">暂无</td></tr>`) + `</table></div>`;
+  const fills = P.recent_fills || [];
+  html += `<div class="sect" style="padding:8px 12px;color:var(--dim)">最近成交（fills）</div><div class="scroll" style="max-height:260px"><table>
+    <tr><th>时间</th><th class="left">市场</th><th>边</th><th>价</th><th>股数</th><th class="left">规则</th></tr>` +
+    (fills.length? fills.slice(0,40).map(r=>`<tr><td>${tsg(r.ts,false)}</td><td class="left">${esc(r.market_id||r.slug||"")}</td>
+      <td>${esc(r.side||"")}</td><td>${r.price!=null?Number(r.price).toFixed(3):"—"}</td><td>${r.size??"—"}</td>
+      <td class="left">${esc(r.rule||"")}</td></tr>`).join(""):`<tr><td colspan="6" class="empty">暂无</td></tr>`) + `</table></div>`;
+  $("pane").innerHTML = html;
+}
+function render(){
+  if(!S) return;
+  $("h-gen").textContent = tsg(S.generated, true);
+  renderCards(); renderDogs(); renderMaker();
+}
+let FAILS=0;
+async function poll(){
+  try{
+    const r = await fetch(stateUrl(), {credentials: FLOOR_API ? "omit" : "same-origin", cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    S = await r.json(); FAILS=0; render();
+    $("h-mode").innerHTML = `<span class="dot"></span>实时 · 每 5 秒` + (FLOOR_API?" · 远程":"");
+  }catch(e){
+    FAILS++; $("h-mode").innerHTML = `<span style="color:var(--red)">■ 刷新失败 ${esc(e.message||e)}</span>`;
+    if(FAILS>=6) location.reload();
+  }
+}
+function tick(){ $("h-clock").textContent = new Date().toLocaleString("zh-CN",{timeZone:TZ,hour12:false,hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
+poll(); setInterval(poll, 5000); setInterval(tick, 250); tick();
+</script>
+</body>
+</html>
