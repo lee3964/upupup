@@ -81,7 +81,7 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
 #pane{min-height:200px}
 .align6{font-size:11px}
 .align6 th,.align6 td{padding:5px 5px;max-width:140px}
-.src-sh{color:var(--late-shadow)} .src-l60{color:var(--logit60)} .src-l120{color:var(--logit120)} .src-lt60{color:var(--logitt60)}
+.src-sh{color:var(--late-shadow)} .src-l60{color:var(--logit60)} .src-l120{color:var(--logit120)} .src-lt60{color:var(--logitt60)} .src-l2{color:var(--live2)}
 
 </style>
 </head>
@@ -122,7 +122,7 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
 
   <div class="panel">
     <div class="tabs" id="tabs">
-      <div class="tab on" data-tab="align">订单对齐（6 paper + LIVE）</div>
+      <div class="tab on" data-tab="align">订单对齐（6 paper + LIVE1/2）</div>
       <div class="tab" data-tab="timeline">订单时间线</div>
       <div class="tab" data-tab="events">近况事件流</div>
     </div>
@@ -135,7 +135,8 @@ td.wrap{white-space:normal;line-height:1.35;max-width:280px}
       <button data-src="paper_logit60">logit60</button>
       <button data-src="paper_logit120">logit120</button>
       <button data-src="paper_logit_t60">logit@T60</button>
-      <button data-src="live">LIVE</button>
+      <button data-src="live">LIVE1</button>
+      <button data-src="live2">LIVE2</button>
       <span id="filter-note"></span>
     </div>
     <div id="pane"><div class="empty">加载中…</div></div>
@@ -301,18 +302,19 @@ function renderAlign(){
     {key:"paper_logit60", label:"logit60", cls:"src-l60", color:"var(--logit60)"},
     {key:"paper_logit120", label:"logit120", cls:"src-l120", color:"var(--logit120)"},
     {key:"paper_logit_t60", label:"logit@T60", cls:"src-lt60", color:"var(--logitt60)"},
-    {key:"live", label:"LIVE", cls:"src-l", color:"var(--live)"},
+    {key:"live", label:"LIVE1", cls:"src-l", color:"var(--live)"},
+    {key:"live2", label:"LIVE2", cls:"src-l2", color:"var(--live2)"},
   ];
   let rows = LOC.aligned || [];
   if(SRC!=="all"){
-    const map = {paper:"paper", paper120:"paper120", paper_shadow:"paper_shadow", paper_logit60:"paper_logit60", paper_logit120:"paper_logit120", paper_logit_t60:"paper_logit_t60", live:"live"};
+    const map = {paper:"paper", paper120:"paper120", paper_shadow:"paper_shadow", paper_logit60:"paper_logit60", paper_logit120:"paper_logit120", paper_logit_t60:"paper_logit_t60", live:"live", live2:"live2"};
     const k = map[SRC];
     if(k) rows = rows.filter(e => e[k]);
   }
   const n6 = LOC.n_aligned_6 ?? rows.filter(e => LANES.every(L => e[L.key])).length;
-  $("filter-note").textContent = `6齐 ${n6} · book60 ${LOC.n_paper||0} / book120 ${LOC.n_paper120||0} / @T60 ${LOC.n_paper_shadow||0} / logit60 ${LOC.n_paper_logit60||0} / logit120 ${LOC.n_paper_logit120||0} / logit@T60 ${LOC.n_paper_logit_t60||0} / LIVE ${LOC.n_live||0}`;
+  $("filter-note").textContent = `6齐 ${n6} · book60 ${LOC.n_paper||0} / book120 ${LOC.n_paper120||0} / @T60 ${LOC.n_paper_shadow||0} / logit60 ${LOC.n_paper_logit60||0} / logit120 ${LOC.n_paper_logit120||0} / logit@T60 ${LOC.n_paper_logit_t60||0} / LIVE1 ${LOC.n_live||0} / LIVE2 ${LOC.n_live2||0} · L1∩L2 ${LOC.n_aligned_live12||0}`;
   const heads = LANES.map(L => `<th class="left" style="color:${L.color}">${L.label}</th>`).join("");
-  $("pane").innerHTML = `<div class="hint">同 slug 七列并排（6 paper + LIVE）· 做市在下方卡片 · 悬停看备注</div>
+  $("pane").innerHTML = `<div class="hint">同 slug 八列并排（6 paper + LIVE1 + LIVE2 shadow）· 做市在下方卡片 · 悬停看备注</div>
     <div class="scroll"><table class="align6"><tr><th>到期</th><th class="left">市场</th>${heads}</tr>` +
     rows.map(e => {
       const t = e.end_ts || LANES.map(L => e[L.key]&&e[L.key].ts).find(Boolean);
@@ -321,7 +323,8 @@ function renderAlign(){
 }
 
 function srcLabel(src){
-  if(src==="live") return `<span class="src-l">LIVE</span>`;
+  if(src==="live") return `<span class="src-l">LIVE1</span>`;
+  if(src==="live2") return `<span class="src-l2">LIVE2</span>`;
   if(src==="paper_late120"||src==="paper120") return `<span class="src-p120">book120</span>`;
   if(src==="paper_shadow") return `<span class="src-sh">book@T60</span>`;
   if(src==="paper_logit60") return `<span class="src-l60">logit60</span>`;
@@ -332,6 +335,7 @@ function srcLabel(src){
 function rowSrcKind(r){
   const s = r.src || r.lane || "";
   if(s==="live") return "live";
+  if(s==="live2") return "live2";
   if(s==="paper_late120"||s==="paper120") return "paper120";
   if(s==="paper_shadow") return "paper_shadow";
   if(s==="paper_logit60") return "paper_logit60";
@@ -363,7 +367,8 @@ function renderEvents(){
     paper_logit60:["pm_late_logit60","paper_late_logit60"],
     paper_logit120:["pm_late_logit120","paper_late_logit120"],
     paper_logit_t60:["pm_late_logit_t60","paper_late_logit_t60"],
-    live:["pm_live","live_late","pm_live2","live_late2"],
+    live:["pm_live","live_late"],
+    live2:["pm_live2","live_late2"],
   };
   if(SRC!=="all" && botMap[SRC]){
     const want = new Set(botMap[SRC]);
