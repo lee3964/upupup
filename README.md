@@ -6,7 +6,7 @@ GitHub Pages 只托管前端；数据来自实时后台（命名 Cloudflare 隧�
 
 1. 大厅：`https://lee3964.github.io/upupup/?k=你的访问令牌`
 2. **late A/B 竞赛（3×2）**：`https://lee3964.github.io/upupup/compare.html?k=…`  
-   行 = book+z / logit×z；列 = 60-scan / 120-scan / T-60；六格全 paper（右下为 **late-logit-t60**）。LIVE 与做市在矩阵下方。
+   行 = book+z / logit×z；列 = 60-scan / 120-scan / T-60（全 paper）。下方 LIVE1 = **logit60** continuous（live-late-v2，对齐第4臂）；LIVE2 shadow + 做市。订单对齐 6 paper + LIVE1/2。
 3. **做市（独立页）**：`https://lee3964.github.io/upupup/maker.html?k=…`
 4. 本地：`http://127.0.0.1:8787/compare.html` · `http://127.0.0.1:8787/maker.html`（需令牌）。
 
