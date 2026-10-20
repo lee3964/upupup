@@ -209,6 +209,8 @@ function renderCards(){
     const wr = X.win_rate;
     const todayWr = today.win_rate;
     const todayOpens = today.opens ?? today.n ?? null;
+    // 累计开单: API opens_total (late=settled+open; maker=all fills). Fallback filled; avoid X.open (maker: list).
+    const opensTotal = X.opens_total ?? X.filled ?? null;
     const title = X.label || short;
     const ver = X.version || "";
     let liveTag = "";
@@ -223,7 +225,7 @@ function renderCards(){
         <div class="metric"><div class="k">权益</div><div class="v">${fmt$(X.equity)}</div></div>
         <div class="metric"><div class="k">累计盈亏</div><div class="v ${pnlCls(X.pnl)}">${pnlTxt(X.pnl)}</div></div>
         <div class="metric"><div class="k">今日盈亏</div><div class="v ${pnlCls(today.pnl)}">${pnlTxt(today.pnl)}</div></div>
-        <div class="metric"><div class="k">今日开单</div><div class="v">${todayOpens!=null?todayOpens:"—"}<span class="muted" style="font-size:12px"> 笔</span></div></div>
+        <div class="metric"><div class="k">累计开单 · 今日开单</div><div class="v">${opensTotal!=null?opensTotal:"—"} · ${todayOpens!=null?todayOpens:"—"}<span class="muted" style="font-size:12px"> 笔</span></div></div>
         <div class="metric"><div class="k">胜率(累计/今日)</div><div class="v">${fmtPct(wr)} / ${fmtPct(todayWr)}</div></div>
         <div class="metric"><div class="k">开仓</div><div class="v">${X.open??0}</div></div>
         <div class="metric"><div class="k">漏单 / 异常</div><div class="v">${X.missed??0} / ${X.errors??0}</div></div>
