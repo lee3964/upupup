@@ -214,7 +214,7 @@ function renderCards(){
     const title = X.label || short;
     const ver = X.version || "";
     let liveTag = "";
-    if(key === "live_late") liveTag = `<span class="badge" style="border-color:var(--live);color:var(--live);margin-left:4px">LIVE1 · logit60</span>`;
+    if(key === "live_late") liveTag = `<span class="badge" style="border-color:var(--live);color:var(--live);margin-left:4px">LIVE1 · =paper logit120 / T-120</span>`;
     if(key === "live_late2") liveTag = `<span class="badge" style="border-color:var(--live2);color:var(--live2);margin-left:4px">${X.shadow!==false?"SHADOW":"LIVE2"} · dry-logit-120</span>`;
     return `<div class="panel card ${accent}">
       <div class="top">
@@ -269,7 +269,7 @@ function renderDogs(){
     ["paper·logit60", T.paper_late_logit60],
     ["paper·logit120", T.paper_late_logit120],
     ["paper·logit@T60", T.paper_late_logit_t60],
-    ["live1·logit60", T.live_late],
+    ["live1·logit120", T.live_late],
     ["live2·shadow", T.live_late2],
     ["paper·做市", T.paper_maker],
   ];
